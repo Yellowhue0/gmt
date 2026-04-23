@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, Search } from 'lucide-react'
+import { CheckCircle2, XCircle, Search, Trash2, Users, ShieldCheck, Sword, Wallet } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -18,12 +18,24 @@ type Member = {
   _count: { checkIns: number }
 }
 
+const ALL_ROLES = ['MEMBER', 'TRAINER', 'FIGHTER', 'FINANCE', 'ADMIN'] as const
+
+const ROLE_META: Record<string, { icon: React.ReactNode; color: string }> = {
+  MEMBER:  { icon: <Users  size={14} />, color: 'text-zinc-400'  },
+  TRAINER: { icon: <ShieldCheck size={14} />, color: 'text-blue-400'   },
+  FIGHTER: { icon: <Sword  size={14} />, color: 'text-brand'     },
+  FINANCE: { icon: <Wallet size={14} />, color: 'text-yellow-400' },
+  ADMIN:   { icon: <ShieldCheck size={14} />, color: 'text-purple-400' },
+}
+
 export default function AdminDashboardPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
+  const [payFilter, setPayFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
   const [updating, setUpdating] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const { t } = useLanguage()
 
   useEffect(() => {
@@ -57,27 +69,55 @@ export default function AdminDashboardPage() {
     }
   }
 
+  const deleteMember = async (member: Member) => {
+    if (!confirm(`Remove ${member.name}? This cannot be undone.`)) return
+    setDeleting(member.id)
+    const res = await fetch(`/api/admin/members/${member.id}`, { method: 'DELETE' })
+    if (res.ok) setMembers(prev => prev.filter(m => m.id !== member.id))
+    setDeleting(null)
+  }
+
   const filtered = members.filter(m => {
     const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
       m.email.toLowerCase().includes(search.toLowerCase())
-    const matchFilter =
-      filter === 'all' ||
-      (filter === 'paid' && m.membershipPaid) ||
-      (filter === 'unpaid' && !m.membershipPaid)
-    return matchSearch && matchFilter
+    const matchPay =
+      payFilter === 'all' ||
+      (payFilter === 'paid' && m.membershipPaid) ||
+      (payFilter === 'unpaid' && !m.membershipPaid)
+    const matchRole = roleFilter === 'all' || m.role === roleFilter
+    return matchSearch && matchPay && matchRole
   })
 
   const paid = members.filter(m => m.membershipPaid).length
   const unpaid = members.filter(m => !m.membershipPaid).length
+  const totalCheckIns = members.reduce((s, m) => s + m._count.checkIns, 0)
 
-  const stats = [
+  const getRoleLabel = (role: string) => {
+    const map: Record<string, string> = {
+      MEMBER: t('adm_role_member'),
+      TRAINER: t('adm_role_trainer'),
+      FIGHTER: t('adm_role_fighter'),
+      FINANCE: t('adm_role_finance'),
+      ADMIN: t('adm_role_admin'),
+    }
+    return map[role] ?? role
+  }
+
+  const primaryStats = [
     { label: t('adm_stat_total'), value: members.length, color: 'text-white' },
     { label: t('adm_stat_paid'), value: paid, color: 'text-green-400' },
     { label: t('adm_stat_unpaid'), value: unpaid, color: 'text-yellow-400' },
-    { label: t('adm_stat_checkins'), value: members.reduce((s, m) => s + m._count.checkIns, 0), color: 'text-brand' },
+    { label: t('adm_stat_checkins'), value: totalCheckIns, color: 'text-brand' },
   ]
 
-  const filters = [
+  const roleStats = ALL_ROLES.map(role => ({
+    role,
+    label: getRoleLabel(role),
+    count: members.filter(m => m.role === role).length,
+    meta: ROLE_META[role],
+  }))
+
+  const payFilters = [
     { key: 'all' as const, label: t('adm_filter_all') },
     { key: 'paid' as const, label: t('adm_filter_paid') },
     { key: 'unpaid' as const, label: t('adm_filter_unpaid') },
@@ -98,15 +138,34 @@ export default function AdminDashboardPage() {
         <p className="text-zinc-500">{t('adm_sub')}</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {stats.map(({ label, value, color }) => (
+      {/* Primary stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        {primaryStats.map(({ label, value, color }) => (
           <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-center">
             <div className={`text-2xl font-bold mb-1 ${color}`} style={{ fontFamily: 'var(--font-display)' }}>
               {value}
             </div>
             <div className="text-zinc-600 text-xs uppercase tracking-wider">{label}</div>
           </div>
+        ))}
+      </div>
+
+      {/* Role breakdown */}
+      <div className="grid grid-cols-5 gap-3 mb-8">
+        {roleStats.map(({ role, label, count, meta }) => (
+          <button
+            key={role}
+            onClick={() => setRoleFilter(roleFilter === role ? 'all' : role)}
+            className={`bg-zinc-900 border rounded-xl p-3 text-center transition-colors ${
+              roleFilter === role ? 'border-brand' : 'border-zinc-800 hover:border-zinc-700'
+            }`}
+          >
+            <div className={`flex items-center justify-center gap-1 mb-1 ${meta.color}`}>
+              {meta.icon}
+              <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>{count}</span>
+            </div>
+            <div className="text-zinc-600 text-xs uppercase tracking-wider truncate">{label}</div>
+          </button>
         ))}
       </div>
 
@@ -121,18 +180,26 @@ export default function AdminDashboardPage() {
             className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-brand"
           />
         </div>
-        <div className="flex gap-2">
-          {filters.map(f => (
+        <div className="flex gap-2 flex-wrap">
+          {payFilters.map(f => (
             <button
               key={f.key}
-              onClick={() => setFilter(f.key)}
+              onClick={() => setPayFilter(f.key)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === f.key ? 'bg-brand text-white' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white'
+                payFilter === f.key ? 'bg-brand text-white' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white'
               }`}
             >
               {f.label}
             </button>
           ))}
+          {roleFilter !== 'all' && (
+            <button
+              onClick={() => setRoleFilter('all')}
+              className="px-3 py-2 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 border border-zinc-700 hover:text-white transition-colors"
+            >
+              {getRoleLabel(roleFilter)} ×
+            </button>
+          )}
         </div>
       </div>
 
@@ -150,12 +217,14 @@ export default function AdminDashboardPage() {
                       {h}
                     </th>
                   ))}
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(member => {
                   const expiry = member.membershipExpiry ? new Date(member.membershipExpiry) : null
                   const isExpiringSoon = expiry && (expiry.getTime() - Date.now()) < 14 * 24 * 60 * 60 * 1000
+                  const meta = ROLE_META[member.role] ?? ROLE_META.MEMBER
                   return (
                     <tr key={member.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                       <td className="px-4 py-3">
@@ -172,10 +241,12 @@ export default function AdminDashboardPage() {
                         <select
                           value={member.role}
                           onChange={e => changeRole(member, e.target.value)}
-                          className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand"
+                          className={`bg-zinc-800 border border-zinc-700 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand ${meta.color}`}
                         >
                           <option value="MEMBER">{t('adm_role_member')}</option>
                           <option value="TRAINER">{t('adm_role_trainer')}</option>
+                          <option value="FIGHTER">{t('adm_role_fighter')}</option>
+                          <option value="FINANCE">{t('adm_role_finance')}</option>
                           <option value="ADMIN">{t('adm_role_admin')}</option>
                         </select>
                       </td>
@@ -211,6 +282,16 @@ export default function AdminDashboardPage() {
                           }`}
                         >
                           {updating === member.id ? '...' : member.membershipPaid ? t('adm_revoke') : t('adm_confirm')}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => deleteMember(member)}
+                          disabled={deleting === member.id}
+                          className="p-1.5 rounded text-zinc-600 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                          title={t('adm_delete')}
+                        >
+                          <Trash2 size={14} />
                         </button>
                       </td>
                     </tr>
