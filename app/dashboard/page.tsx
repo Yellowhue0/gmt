@@ -32,6 +32,8 @@ type Session = {
 const ROLE_KEY: Record<string, TranslationKey> = {
   ADMIN: 'role_admin',
   TRAINER: 'role_trainer',
+  FIGHTER: 'role_fighter',
+  FINANCE: 'role_finance',
   MEMBER: 'role_member',
 }
 

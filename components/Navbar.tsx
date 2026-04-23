@@ -28,6 +28,7 @@ export default function Navbar() {
 
   const isStaff = user?.role === 'TRAINER' || user?.role === 'ADMIN'
   const isAdmin = user?.role === 'ADMIN'
+  const isFinance = user?.role === 'FINANCE' || user?.role === 'ADMIN'
 
   const navLinks = [
     { href: '/', label: t('nav_home') },
@@ -95,6 +96,11 @@ export default function Navbar() {
                 {isStaff && (
                   <Link href="/dashboard/trainer" className="text-sm text-zinc-400 hover:text-white transition-colors">
                     {t('nav_trainer_view')}
+                  </Link>
+                )}
+                {isFinance && (
+                  <Link href="/dashboard/finance" className="text-sm text-zinc-400 hover:text-white transition-colors">
+                    {t('nav_finance')}
                   </Link>
                 )}
                 {isAdmin && (
@@ -173,6 +179,11 @@ export default function Navbar() {
                   {isStaff && (
                     <Link href="/dashboard/trainer" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
                       {t('nav_trainer_view')}
+                    </Link>
+                  )}
+                  {isFinance && (
+                    <Link href="/dashboard/finance" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
+                      {t('nav_finance')}
                     </Link>
                   )}
                   {isAdmin && (

@@ -7,7 +7,7 @@ const secret = new TextEncoder().encode(
 
 export type UserPayload = {
   userId: string
-  role: 'MEMBER' | 'TRAINER' | 'ADMIN'
+  role: 'MEMBER' | 'TRAINER' | 'FIGHTER' | 'FINANCE' | 'ADMIN'
   name: string
   email: string
 }
