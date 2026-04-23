@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Outer black ring -->
+  <circle cx="100" cy="100" r="97" fill="#111111"/>
+  <!-- White gap -->
+  <circle cx="100" cy="100" r="90" fill="white"/>
+  <!-- Inner black ring -->
+  <circle cx="100" cy="100" r="83" fill="#111111"/>
+  <!-- Center white area -->
+  <circle cx="100" cy="100" r="76" fill="white"/>
+
+  <!-- Top arc text path -->
+  <path id="topArc" d="M 17,100 A 83,83 0 0,1 183,100" fill="none"/>
+  <!-- Bottom arc text path -->
+  <path id="bottomArc" d="M 26,100 A 74,74 0 0,0 174,100" fill="none"/>
+
+  <text font-family="Arial Black, Arial, sans-serif" font-size="11.5" font-weight="900" fill="white" letter-spacing="2">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">GLOMMENS MUAY THAI</textPath>
+  </text>
+  <text font-family="Arial Black, Arial, sans-serif" font-size="11" font-weight="900" fill="white" letter-spacing="3.5">
+    <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">FALKENBERG</textPath>
+  </text>
+
+  <!-- Stars left (red) -->
+  <g fill="#a11e00">
+    <polygon points="28,95 30,89 32,95 26,91 34,91"/>
+    <polygon points="22,105 24,99 26,105 20,101 28,101"/>
+    <polygon points="30,115 32,109 34,115 28,111 36,111"/>
+  </g>
+  <!-- Stars right (red) -->
+  <g fill="#a11e00">
+    <polygon points="172,95 170,89 168,95 174,91 166,91"/>
+    <polygon points="178,105 176,99 174,105 180,101 172,101"/>
+    <polygon points="170,115 168,109 166,115 172,111 164,111"/>
+  </g>
+
+  <!-- Fighter silhouette (muay thai high kick pose) -->
+  <g fill="#111111">
+    <!-- Head -->
+    <circle cx="108" cy="38" r="7"/>
+    <!-- Neck + body -->
+    <path d="M 103,45 Q 100,50 99,65 L 104,65 Q 105,52 108,47 Z"/>
+    <path d="M 108,47 Q 112,52 113,65 L 108,65 Z"/>
+    <!-- Torso -->
+    <rect x="99" y="55" width="18" height="22" rx="4"/>
+    <!-- Left arm (raised, guarding) -->
+    <path d="M 99,58 L 87,45 L 84,48 L 96,62 Z"/>
+    <!-- Right arm (extended forward) -->
+    <path d="M 117,60 L 130,52 L 132,56 L 119,64 Z"/>
+    <!-- Standing right leg -->
+    <path d="M 104,77 L 101,110 L 108,110 L 111,77 Z"/>
+    <!-- Foot right -->
+    <ellipse cx="104" cy="112" rx="6" ry="3"/>
+    <!-- Kick left leg (high kick going up-right) -->
+    <path d="M 113,77 L 138,55 L 142,59 L 117,82 Z"/>
+    <!-- Shin of kick leg -->
+    <path d="M 138,55 L 152,40 L 156,44 L 142,59 Z"/>
+    <!-- Kick foot -->
+    <ellipse cx="154" cy="42" rx="6" ry="3.5" transform="rotate(-45 154 42)"/>
+    <!-- Shorts (darker area on torso bottom) -->
+    <rect x="99" y="66" width="18" height="11" rx="2" fill="#333333"/>
+  </g>
+</svg>
