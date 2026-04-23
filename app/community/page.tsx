@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { MessageCircle, Pin, Send, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatRelative, getCategoryLabel } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
+import MentionTextarea from '@/components/MentionTextarea'
 import type { TranslationKey } from '@/lib/i18n'
 
 type Author = { id: string; name: string; role: string }
@@ -39,11 +40,21 @@ const CAT_LABEL_KEYS: Record<string, TranslationKey> = {
   QUESTION: 'com_cat_questions',
 }
 
+function renderMentions(text: string) {
+  const parts = text.split(/(@\w+)/g)
+  return parts.map((part, i) =>
+    /^@\w+$/.test(part)
+      ? <span key={i} className="text-brand font-medium">{part}</span>
+      : <span key={i}>{part}</span>
+  )
+}
+
 export default function CommunityPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [user, setUser] = useState<User>(null)
   const [category, setCategory] = useState('')
   const [newContent, setNewContent] = useState('')
+  const [newMentions, setNewMentions] = useState<string[]>([])
   const [newCategory, setNewCategory] = useState('GENERAL')
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
@@ -80,10 +91,11 @@ export default function CommunityPage() {
     const res = await fetch('/api/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: newContent, category: newCategory }),
+      body: JSON.stringify({ content: newContent, category: newCategory, mentionedUserIds: newMentions }),
     })
     if (res.ok) {
       setNewContent('')
+      setNewMentions([])
       setShowForm(false)
       loadPosts()
     }
@@ -122,7 +134,7 @@ export default function CommunityPage() {
           </div>
           {sparringPosts.slice(0, 1).map(p => (
             <div key={p.id}>
-              <p className="text-white text-sm whitespace-pre-wrap">{p.content}</p>
+              <p className="text-white text-sm whitespace-pre-wrap">{renderMentions(p.content)}</p>
               <div className="text-zinc-600 text-xs mt-2">{p.author.name} · {formatRelative(p.createdAt)}</div>
             </div>
           ))}
@@ -144,14 +156,15 @@ export default function CommunityPage() {
               ))}
             </select>
           </div>
-          <textarea
+          <MentionTextarea
             value={newContent}
-            onChange={e => setNewContent(e.target.value)}
+            onChange={setNewContent}
+            onMentionsChange={setNewMentions}
             rows={4}
-            className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2.5 text-sm focus:outline-none focus:border-brand resize-none placeholder:text-zinc-600"
             placeholder={t('com_placeholder')}
-            required
+            className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2.5 text-sm focus:outline-none focus:border-brand resize-none placeholder:text-zinc-600"
           />
+          <p className="text-zinc-700 text-xs">{t('com_mention_hint')}</p>
           <div className="flex gap-2">
             <button
               type="submit"
@@ -194,7 +207,6 @@ export default function CommunityPage() {
         ))}
       </div>
 
-      {/* Posts */}
       {loading ? (
         <div className="text-zinc-600 text-center py-16">{t('com_loading')}</div>
       ) : posts.length === 0 ? (
@@ -219,12 +231,7 @@ export default function CommunityPage() {
   )
 }
 
-function PostCard({
-  post,
-  user,
-  userId,
-  onDelete,
-}: {
+function PostCard({ post, user, userId, onDelete }: {
   post: Post
   user: User
   userId: string | undefined
@@ -233,6 +240,7 @@ function PostCard({
   const [comments, setComments] = useState<Comment[]>([])
   const [showComments, setShowComments] = useState(false)
   const [newComment, setNewComment] = useState('')
+  const [commentMentions, setCommentMentions] = useState<string[]>([])
   const [loadingComments, setLoadingComments] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const { t } = useLanguage()
@@ -258,12 +266,13 @@ function PostCard({
     const res = await fetch(`/api/posts/${post.id}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: newComment }),
+      body: JSON.stringify({ content: newComment, mentionedUserIds: commentMentions }),
     })
     if (res.ok) {
       const { data } = await res.json()
       setComments(prev => [...prev, data])
       setNewComment('')
+      setCommentMentions([])
     }
     setSubmitting(false)
   }
@@ -278,9 +287,7 @@ function PostCard({
   const roleBadgeLabel = (role: string) => role === 'ADMIN' ? t('adm_role_admin') : t('adm_role_trainer')
 
   return (
-    <div className={`bg-zinc-900 border rounded-xl overflow-hidden ${
-      post.pinned ? 'border-brand/30' : 'border-zinc-800'
-    }`}>
+    <div className={`bg-zinc-900 border rounded-xl overflow-hidden ${post.pinned ? 'border-brand/30' : 'border-zinc-800'}`}>
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -291,9 +298,7 @@ function PostCard({
               <div className="flex items-center gap-2">
                 <span className="text-white text-sm font-medium">{post.author.name}</span>
                 {ROLE_BADGE[post.author.role] && (
-                  <span className={ROLE_BADGE[post.author.role]}>
-                    {roleBadgeLabel(post.author.role)}
-                  </span>
+                  <span className={ROLE_BADGE[post.author.role]}>{roleBadgeLabel(post.author.role)}</span>
                 )}
               </div>
               <span className="text-zinc-600 text-xs">{formatRelative(post.createdAt)}</span>
@@ -307,7 +312,9 @@ function PostCard({
           </div>
         </div>
 
-        <p className="text-zinc-200 text-sm leading-relaxed whitespace-pre-wrap mb-4">{post.content}</p>
+        <p className="text-zinc-200 text-sm leading-relaxed whitespace-pre-wrap mb-4">
+          {renderMentions(post.content)}
+        </p>
 
         <div className="flex items-center justify-between">
           <button
@@ -341,32 +348,36 @@ function PostCard({
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="text-zinc-300 text-xs font-medium">{c.author.name}</span>
                       {ROLE_BADGE[c.author.role] && (
-                        <span className={ROLE_BADGE[c.author.role]}>
-                          {roleBadgeLabel(c.author.role)}
-                        </span>
+                        <span className={ROLE_BADGE[c.author.role]}>{roleBadgeLabel(c.author.role)}</span>
                       )}
                       <span className="text-zinc-600 text-xs">{formatRelative(c.createdAt)}</span>
                     </div>
-                    <p className="text-zinc-400 text-xs leading-relaxed">{c.content}</p>
+                    <p className="text-zinc-400 text-xs leading-relaxed">
+                      {renderMentions(c.content)}
+                    </p>
                   </div>
                 </div>
               ))}
               {user && (
-                <form onSubmit={submitComment} className="flex gap-2 mt-3">
-                  <input
-                    value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
-                    placeholder={t('com_comment_placeholder')}
-                    className="flex-1 bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-1.5 text-xs focus:outline-none focus:border-brand placeholder:text-zinc-600"
-                  />
-                  <button
-                    type="submit"
-                    disabled={submitting || !newComment.trim()}
-                    className="px-3 py-1.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white text-xs rounded transition-colors"
-                  >
-                    <Send size={12} />
-                  </button>
-                </form>
+                <div className="mt-3">
+                  <form onSubmit={submitComment} className="flex gap-2">
+                    <MentionTextarea
+                      value={newComment}
+                      onChange={setNewComment}
+                      onMentionsChange={setCommentMentions}
+                      rows={1}
+                      placeholder={t('com_comment_placeholder')}
+                      className="flex-1 bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-1.5 text-xs focus:outline-none focus:border-brand placeholder:text-zinc-600 resize-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={submitting || !newComment.trim()}
+                      className="px-3 py-1.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white text-xs rounded transition-colors"
+                    >
+                      <Send size={12} />
+                    </button>
+                  </form>
+                </div>
               )}
             </div>
           )}

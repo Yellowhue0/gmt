@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { createMentionNotifications } from '@/lib/mentions'
 
 export async function GET(
   _request: Request,
@@ -23,12 +24,24 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'Ej inloggad' }, { status: 401 })
 
   const { id } = await params
-  const { content } = await request.json()
+  const { content, mentionedUserIds = [] } = await request.json()
   if (!content?.trim()) return NextResponse.json({ error: 'Innehåll krävs' }, { status: 400 })
 
   const comment = await prisma.comment.create({
     data: { content: content.trim(), postId: id, authorId: user.userId },
     include: { author: { select: { id: true, name: true, role: true } } },
   })
+
+  // Also notify the post author if they weren't the commenter
+  const post = await prisma.post.findUnique({ where: { id }, select: { authorId: true } })
+  const notifyIds = [...mentionedUserIds]
+  if (post && post.authorId !== user.userId && !notifyIds.includes(post.authorId)) {
+    notifyIds.push(post.authorId)
+  }
+
+  if (notifyIds.length > 0) {
+    await createMentionNotifications(content.trim(), notifyIds, user.userId, user.name, 'comment')
+  }
+
   return NextResponse.json({ data: comment }, { status: 201 })
 }

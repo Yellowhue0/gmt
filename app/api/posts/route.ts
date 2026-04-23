@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { createMentionNotifications } from '@/lib/mentions'
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -20,18 +21,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const user = await getCurrentUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Ej inloggad' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Ej inloggad' }, { status: 401 })
 
-  const { content, category } = await request.json()
-  if (!content?.trim()) {
-    return NextResponse.json({ error: 'Innehåll krävs' }, { status: 400 })
-  }
-
-  const pinned = user.role === 'ADMIN' || user.role === 'TRAINER'
-    ? false
-    : false
+  const { content, category, mentionedUserIds = [] } = await request.json()
+  if (!content?.trim()) return NextResponse.json({ error: 'Innehåll krävs' }, { status: 400 })
 
   const post = await prisma.post.create({
     data: {
@@ -42,6 +35,10 @@ export async function POST(request: Request) {
     },
     include: { author: { select: { id: true, name: true, role: true } } },
   })
+
+  if (mentionedUserIds.length > 0) {
+    await createMentionNotifications(content.trim(), mentionedUserIds, user.userId, user.name, 'post')
+  }
 
   return NextResponse.json({ data: post }, { status: 201 })
 }

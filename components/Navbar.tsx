@@ -1,24 +1,68 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Bell } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { formatRelative } from '@/lib/utils'
 
 type User = { name: string; role: string; email: string }
+type Notification = { id: string; title: string; message: string; type: string; read: boolean; createdAt: string }
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [bellOpen, setBellOpen] = useState(false)
+  const bellRef = useRef<HTMLDivElement>(null)
   const { lang, setLang, t } = useLanguage()
 
   useEffect(() => {
     fetch('/api/auth/me')
-      .then((r) => r.json())
-      .then((d) => d.data && setUser(d.data))
+      .then(r => r.json())
+      .then(d => {
+        if (d.data) {
+          setUser(d.data)
+          fetchNotifications()
+        }
+      })
       .catch(() => {})
   }, [])
+
+  // Poll for new notifications every 30s
+  useEffect(() => {
+    if (!user) return
+    const id = setInterval(fetchNotifications, 30_000)
+    return () => clearInterval(id)
+  }, [user])
+
+  // Close bell dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setBellOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const fetchNotifications = () => {
+    fetch('/api/notifications')
+      .then(r => r.json())
+      .then(d => setNotifications(d.data ?? []))
+      .catch(() => {})
+  }
+
+  const openBell = () => {
+    setBellOpen(v => !v)
+    if (!bellOpen && unreadCount > 0) {
+      fetch('/api/notifications', { method: 'PATCH' }).then(() => {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+      })
+    }
+  }
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -29,6 +73,7 @@ export default function Navbar() {
   const isStaff = user?.role === 'TRAINER' || user?.role === 'ADMIN'
   const isAdmin = user?.role === 'ADMIN'
   const isFinance = user?.role === 'FINANCE' || user?.role === 'ADMIN'
+  const unreadCount = notifications.filter(n => !n.read).length
 
   const navLinks = [
     { href: '/', label: t('nav_home') },
@@ -59,37 +104,65 @@ export default function Navbar() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-7">
             {navLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="text-sm text-zinc-400 hover:text-white transition-colors font-medium"
-              >
+              <Link key={href} href={href} className="text-sm text-zinc-400 hover:text-white transition-colors font-medium">
                 {label}
               </Link>
             ))}
           </div>
 
-          {/* Right side: lang toggle + auth */}
+          {/* Right side */}
           <div className="hidden md:flex items-center gap-3">
             {/* Language toggle */}
             <div className="flex items-center rounded border border-zinc-700 overflow-hidden text-xs font-medium">
-              <button
-                onClick={() => setLang('sv')}
-                className={`px-2.5 py-1 transition-colors ${lang === 'sv' ? 'bg-brand text-white' : 'text-zinc-400 hover:text-white'}`}
-              >
-                SV
-              </button>
+              <button onClick={() => setLang('sv')} className={`px-2.5 py-1 transition-colors ${lang === 'sv' ? 'bg-brand text-white' : 'text-zinc-400 hover:text-white'}`}>SV</button>
               <div className="w-px bg-zinc-700 self-stretch" />
-              <button
-                onClick={() => setLang('en')}
-                className={`px-2.5 py-1 transition-colors ${lang === 'en' ? 'bg-brand text-white' : 'text-zinc-400 hover:text-white'}`}
-              >
-                EN
-              </button>
+              <button onClick={() => setLang('en')} className={`px-2.5 py-1 transition-colors ${lang === 'en' ? 'bg-brand text-white' : 'text-zinc-400 hover:text-white'}`}>EN</button>
             </div>
 
             {user ? (
               <>
+                {/* Notification bell */}
+                <div ref={bellRef} className="relative">
+                  <button
+                    onClick={openBell}
+                    className="relative p-1.5 text-zinc-400 hover:text-white transition-colors"
+                    aria-label={t('nav_notifications')}
+                  >
+                    <Bell size={18} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-brand rounded-full text-[10px] text-white flex items-center justify-center font-bold">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {bellOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-50">
+                      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+                        <span className="text-white text-sm font-semibold">{t('nav_notifications')}</span>
+                      </div>
+                      <ul className="max-h-80 overflow-y-auto divide-y divide-zinc-800/60">
+                        {notifications.length === 0 ? (
+                          <li className="px-4 py-8 text-center text-zinc-600 text-sm">{t('nav_no_notifications')}</li>
+                        ) : (
+                          notifications.map(n => (
+                            <li key={n.id} className={`px-4 py-3 transition-colors ${n.read ? '' : 'bg-brand/5'}`}>
+                              <div className="flex items-start gap-2">
+                                {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-brand mt-1.5 shrink-0" />}
+                                <div className={!n.read ? '' : 'pl-3.5'}>
+                                  <p className="text-white text-xs font-medium">{n.title}</p>
+                                  <p className="text-zinc-500 text-xs mt-0.5 line-clamp-2">{n.message}</p>
+                                  <p className="text-zinc-700 text-[10px] mt-1">{formatRelative(n.createdAt)}</p>
+                                </div>
+                              </div>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
                 <Link href="/dashboard" className="text-sm text-zinc-400 hover:text-white transition-colors">
                   {user.name}
                 </Link>
@@ -108,50 +181,36 @@ export default function Navbar() {
                     {t('nav_admin')}
                   </Link>
                 )}
-                <button
-                  onClick={logout}
-                  className="text-sm text-zinc-600 hover:text-zinc-400 transition-colors"
-                >
+                <button onClick={logout} className="text-sm text-zinc-600 hover:text-zinc-400 transition-colors">
                   {t('nav_logout')}
                 </button>
               </>
             ) : (
               <>
-                <Link href="/login" className="text-sm text-zinc-400 hover:text-white transition-colors">
-                  {t('nav_login')}
-                </Link>
-                <Link
-                  href="/register"
-                  className="px-4 py-1.5 bg-brand hover:bg-brand-hover text-white text-sm font-medium rounded transition-colors"
-                >
-                  {t('nav_join')}
-                </Link>
+                <Link href="/login" className="text-sm text-zinc-400 hover:text-white transition-colors">{t('nav_login')}</Link>
+                <Link href="/register" className="px-4 py-1.5 bg-brand hover:bg-brand-hover text-white text-sm font-medium rounded transition-colors">{t('nav_join')}</Link>
               </>
             )}
           </div>
 
-          {/* Mobile: lang toggle + hamburger */}
+          {/* Mobile: lang toggle + bell + hamburger */}
           <div className="md:hidden flex items-center gap-2">
             <div className="flex items-center rounded border border-zinc-700 overflow-hidden text-xs font-medium">
-              <button
-                onClick={() => setLang('sv')}
-                className={`px-2 py-1 transition-colors ${lang === 'sv' ? 'bg-brand text-white' : 'text-zinc-400'}`}
-              >
-                SV
-              </button>
+              <button onClick={() => setLang('sv')} className={`px-2 py-1 transition-colors ${lang === 'sv' ? 'bg-brand text-white' : 'text-zinc-400'}`}>SV</button>
               <div className="w-px bg-zinc-700 self-stretch" />
-              <button
-                onClick={() => setLang('en')}
-                className={`px-2 py-1 transition-colors ${lang === 'en' ? 'bg-brand text-white' : 'text-zinc-400'}`}
-              >
-                EN
-              </button>
+              <button onClick={() => setLang('en')} className={`px-2 py-1 transition-colors ${lang === 'en' ? 'bg-brand text-white' : 'text-zinc-400'}`}>EN</button>
             </div>
-            <button
-              onClick={() => setOpen(!open)}
-              className="text-zinc-400 hover:text-white p-1"
-              aria-label="Meny"
-            >
+            {user && (
+              <button onClick={openBell} className="relative p-1.5 text-zinc-400 hover:text-white transition-colors">
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-brand rounded-full text-[10px] text-white flex items-center justify-center font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
+            <button onClick={() => setOpen(!open)} className="text-zinc-400 hover:text-white p-1" aria-label="Meny">
               {open ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
@@ -161,12 +220,7 @@ export default function Navbar() {
         {open && (
           <div className="md:hidden pb-4 border-t border-zinc-900 space-y-1 pt-3">
             {navLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setOpen(false)}
-                className="block px-2 py-2 text-zinc-300 hover:text-white text-sm"
-              >
+              <Link key={href} href={href} onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
                 {label}
               </Link>
             ))}
@@ -197,12 +251,8 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                  <Link href="/login" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
-                    {t('nav_login')}
-                  </Link>
-                  <Link href="/register" onClick={() => setOpen(false)} className="block px-2 py-2 text-brand font-medium text-sm">
-                    {t('nav_join')}
-                  </Link>
+                  <Link href="/login" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">{t('nav_login')}</Link>
+                  <Link href="/register" onClick={() => setOpen(false)} className="block px-2 py-2 text-brand font-medium text-sm">{t('nav_join')}</Link>
                 </>
               )}
             </div>
