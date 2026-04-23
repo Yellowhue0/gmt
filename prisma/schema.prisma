@@ -10,6 +10,8 @@ datasource db {
 enum Role {
   MEMBER
   TRAINER
+  FIGHTER
+  FINANCE
   ADMIN
 }
 
@@ -26,10 +28,11 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  checkIns  CheckIn[]
-  posts     Post[]
-  comments  Comment[]
-  sessions  GymSession[] @relation("TrainerSessions")
+  checkIns      CheckIn[]
+  posts         Post[]
+  comments      Comment[]
+  sessions      GymSession[]   @relation("TrainerSessions")
+  notifications Notification[]
 }
 
 model GymSession {
@@ -56,9 +59,21 @@ model CheckIn {
   sessionId String
   session   GymSession @relation(fields: [sessionId], references: [id])
   date      String
+  notes     String?
   createdAt DateTime   @default(now())
 
   @@unique([userId, sessionId, date])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   @default("INFO")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model Event {

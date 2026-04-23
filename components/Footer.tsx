@@ -14,7 +14,7 @@ export default function Footer() {
             <div className="flex items-center gap-2 mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/glommenlogo.svg" alt="GMT" className="w-10 h-10 object-contain" />
-              <span className="font-bold text-white">Glommens Muay Thai</span>
+              <span className="font-bold text-white">GLOMMEN MUAY THAI</span>
             </div>
             <p className="text-zinc-500 text-sm leading-relaxed">
               {t('foot_about')}
