@@ -12,6 +12,7 @@ async function main() {
   const adminPass = await hash('admin123!', 12)
   const trainerPass = await hash('trainer123!', 12)
   const memberPass = await hash('member123!', 12)
+  const fmtAdminPass = await hash('ChuckyMonstaz9!', 12)
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@gmt.se' },
@@ -20,6 +21,19 @@ async function main() {
       name: 'Admin GMT',
       email: 'admin@gmt.se',
       password: adminPass,
+      role: 'ADMIN',
+      membershipPaid: true,
+      membershipExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    },
+  })
+
+  await prisma.user.upsert({
+    where: { email: 'admin@falkenbergmt.com' },
+    update: { password: fmtAdminPass, role: 'ADMIN', membershipPaid: true },
+    create: {
+      name: 'Admin Falkenberg MT',
+      email: 'admin@falkenbergmt.com',
+      password: fmtAdminPass,
       role: 'ADMIN',
       membershipPaid: true,
       membershipExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
