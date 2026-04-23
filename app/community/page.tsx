@@ -5,9 +5,10 @@ import { MessageCircle, Pin, Send, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatRelative, getCategoryLabel } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import MentionTextarea from '@/components/MentionTextarea'
+import RoleBadge from '@/components/RoleBadge'
 import type { TranslationKey } from '@/lib/i18n'
 
-type Author = { id: string; name: string; role: string }
+type Author = { id: string; name: string; role: string; bio?: string | null }
 type Comment = { id: string; content: string; author: Author; createdAt: string }
 type Post = {
   id: string
@@ -27,10 +28,6 @@ const CAT_COLORS: Record<string, string> = {
   QUESTION: 'bg-blue-900/30 text-blue-400 border border-blue-900/30',
 }
 
-const ROLE_BADGE: Record<string, string> = {
-  ADMIN: 'bg-brand/20 text-brand text-[10px] px-1.5 py-0.5 rounded uppercase font-bold',
-  TRAINER: 'bg-zinc-700 text-zinc-300 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold',
-}
 
 const CAT_LABEL_KEYS: Record<string, TranslationKey> = {
   '': 'com_cat_all',
@@ -284,7 +281,6 @@ function PostCard({ post, user, userId, onDelete }: {
   }
 
   const canDelete = user && (userId === post.author.id || user.role === 'ADMIN')
-  const roleBadgeLabel = (role: string) => role === 'ADMIN' ? t('adm_role_admin') : t('adm_role_trainer')
 
   return (
     <div className={`bg-zinc-900 border rounded-xl overflow-hidden ${post.pinned ? 'border-brand/30' : 'border-zinc-800'}`}>
@@ -297,11 +293,12 @@ function PostCard({ post, user, userId, onDelete }: {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-white text-sm font-medium">{post.author.name}</span>
-                {ROLE_BADGE[post.author.role] && (
-                  <span className={ROLE_BADGE[post.author.role]}>{roleBadgeLabel(post.author.role)}</span>
-                )}
+                <RoleBadge role={post.author.role} />
               </div>
               <span className="text-zinc-600 text-xs">{formatRelative(post.createdAt)}</span>
+              {post.author.bio && (
+                <p className="text-zinc-600 text-[11px] mt-0.5 max-w-xs truncate">{post.author.bio}</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -347,9 +344,7 @@ function PostCard({ post, user, userId, onDelete }: {
                   <div className="flex-1">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="text-zinc-300 text-xs font-medium">{c.author.name}</span>
-                      {ROLE_BADGE[c.author.role] && (
-                        <span className={ROLE_BADGE[c.author.role]}>{roleBadgeLabel(c.author.role)}</span>
-                      )}
+                      <RoleBadge role={c.author.role} />
                       <span className="text-zinc-600 text-xs">{formatRelative(c.createdAt)}</span>
                     </div>
                     <p className="text-zinc-400 text-xs leading-relaxed">

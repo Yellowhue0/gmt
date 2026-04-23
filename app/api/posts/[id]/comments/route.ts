@@ -10,7 +10,7 @@ export async function GET(
   const { id } = await params
   const comments = await prisma.comment.findMany({
     where: { postId: id },
-    include: { author: { select: { id: true, name: true, role: true } } },
+    include: { author: { select: { id: true, name: true, role: true, bio: true } } },
     orderBy: { createdAt: 'asc' },
   })
   return NextResponse.json({ data: comments })
@@ -29,7 +29,7 @@ export async function POST(
 
   const comment = await prisma.comment.create({
     data: { content: content.trim(), postId: id, authorId: user.userId },
-    include: { author: { select: { id: true, name: true, role: true } } },
+    include: { author: { select: { id: true, name: true, role: true, bio: true } } },
   })
 
   // Also notify the post author if they weren't the commenter

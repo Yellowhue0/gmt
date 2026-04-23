@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const posts = await prisma.post.findMany({
     where: category ? { category } : undefined,
     include: {
-      author: { select: { id: true, name: true, role: true } },
+      author: { select: { id: true, name: true, role: true, bio: true } },
       _count: { select: { comments: true } },
     },
     orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       authorId: user.userId,
       pinned: false,
     },
-    include: { author: { select: { id: true, name: true, role: true } } },
+    include: { author: { select: { id: true, name: true, role: true, bio: true } } },
   })
 
   if (mentionedUserIds.length > 0) {

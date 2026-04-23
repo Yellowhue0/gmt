@@ -21,12 +21,15 @@ model User {
   email            String    @unique
   password         String
   role             Role      @default(MEMBER)
-  swishNumber      String?
-  phone            String?
-  membershipPaid   Boolean   @default(false)
-  membershipExpiry DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  swishNumber          String?
+  phone                String?
+  bio                  String?
+  avatarUrl            String?
+  usernameChangesCount Int       @default(0)
+  membershipPaid       Boolean   @default(false)
+  membershipExpiry     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   checkIns      CheckIn[]
   posts         Post[]

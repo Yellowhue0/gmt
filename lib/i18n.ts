@@ -17,6 +17,7 @@ const translations = {
     nav_no_notifications: 'Inga notiser',
     nav_mark_read: 'Markera alla som lästa',
     nav_my_page: 'Min sida',
+    nav_profile: 'Profil',
 
     // Home
     home_badge: 'Falkenberg · Sedan 2010',
@@ -231,6 +232,26 @@ const translations = {
     fin_capacity_col: 'Kapacitet',
     fin_total_col: 'Totalt',
 
+    // Profile
+    prof_title: 'Min profil',
+    prof_sub: 'Hantera dina profilinställningar',
+    prof_picture: 'Profilbild',
+    prof_upload: 'Ladda upp foto',
+    prof_coming_soon: 'Kommer snart',
+    prof_account: 'Kontoinformation',
+    prof_membership: 'Medlemskap',
+    prof_member_since: 'Medlem sedan',
+    prof_username: 'Användarnamn',
+    prof_name_remaining: 'Du har {n} namnbyten kvar',
+    prof_name_used_up: 'Namnbyten slut',
+    prof_bio_label: 'Om mig',
+    prof_bio_hint: 'Skriv kort om dig själv. Visas vid dina inlägg.',
+    prof_bio_placeholder: 'T.ex. "Tränar sedan 2022, älskar sparring..."',
+    prof_save: 'Spara',
+    prof_bio_saved: 'Bio sparad!',
+    prof_name_saved: 'Namn uppdaterat!',
+    prof_error: 'Något gick fel',
+
     // Trainer
     tr_title: 'Tränarvy',
     tr_sub: 'Se vem som är incheckad på varje pass',
@@ -293,6 +314,7 @@ const translations = {
     nav_login: 'Log in',
     nav_join: 'Join',
     nav_my_page: 'My Page',
+    nav_profile: 'Profile',
 
     // Home
     home_badge: 'Falkenberg · Since 2010',
@@ -506,6 +528,26 @@ const translations = {
     fin_day_col: 'Day',
     fin_capacity_col: 'Capacity',
     fin_total_col: 'Total',
+
+    // Profile
+    prof_title: 'My Profile',
+    prof_sub: 'Manage your profile settings',
+    prof_picture: 'Profile Picture',
+    prof_upload: 'Upload Photo',
+    prof_coming_soon: 'Coming soon',
+    prof_account: 'Account Information',
+    prof_membership: 'Membership',
+    prof_member_since: 'Member since',
+    prof_username: 'Username',
+    prof_name_remaining: 'You have {n} username changes remaining',
+    prof_name_used_up: 'Username changes used up',
+    prof_bio_label: 'About Me',
+    prof_bio_hint: 'Write a short bio about yourself. Shown next to your posts.',
+    prof_bio_placeholder: 'E.g. "Training since 2022, love sparring..."',
+    prof_save: 'Save',
+    prof_bio_saved: 'Bio saved!',
+    prof_name_saved: 'Name updated!',
+    prof_error: 'Something went wrong',
 
     // Trainer
     tr_title: 'Trainer View',

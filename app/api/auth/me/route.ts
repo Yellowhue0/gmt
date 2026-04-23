@@ -13,10 +13,14 @@ export async function GET() {
       name: true,
       email: true,
       role: true,
+      bio: true,
+      avatarUrl: true,
+      usernameChangesCount: true,
       membershipPaid: true,
       membershipExpiry: true,
       swishNumber: true,
       phone: true,
+      createdAt: true,
     },
   })
 

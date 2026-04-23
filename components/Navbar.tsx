@@ -166,6 +166,9 @@ export default function Navbar() {
                 <Link href="/dashboard" className="text-sm text-zinc-400 hover:text-white transition-colors">
                   {user.name}
                 </Link>
+                <Link href="/dashboard/profile" className="text-sm text-zinc-400 hover:text-white transition-colors">
+                  {t('nav_profile')}
+                </Link>
                 {isStaff && (
                   <Link href="/dashboard/trainer" className="text-sm text-zinc-400 hover:text-white transition-colors">
                     {t('nav_trainer_view')}
@@ -229,6 +232,9 @@ export default function Navbar() {
                 <>
                   <Link href="/dashboard" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
                     {t('nav_my_page')} – {user.name}
+                  </Link>
+                  <Link href="/dashboard/profile" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
+                    {t('nav_profile')}
                   </Link>
                   {isStaff && (
                     <Link href="/dashboard/trainer" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
