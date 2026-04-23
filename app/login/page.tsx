@@ -3,11 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function LoginPage() {
-  const router = useRouter()
   const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,8 +30,8 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    const role = data.data?.role
+    window.location.href = role === 'ADMIN' ? '/dashboard/admin' : '/dashboard'
   }
 
   return (
