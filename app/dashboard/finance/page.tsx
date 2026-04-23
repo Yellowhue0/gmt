@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, Search, TrendingUp, Users, BarChart3 } from 'lucide-react'
+import { CheckCircle2, XCircle, Search, TrendingUp, Users, BarChart3, AlertTriangle } from 'lucide-react'
 import { formatDate, MEMBERSHIP_PRICE } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -12,7 +12,8 @@ type Member = {
   role: string
   swishNumber: string | null
   membershipPaid: boolean
-  membershipExpiry: string | null
+  membershipStart: string | null
+  membershipEnd: string | null
   _count: { checkIns: number }
 }
 
@@ -35,6 +36,18 @@ type TopMember = {
 }
 
 type Tab = 'payments' | 'attendance'
+type DateField = { id: string; field: 'start' | 'end'; value: string }
+
+function toDateInput(d: string | null): string {
+  if (!d) return ''
+  return new Date(d).toISOString().split('T')[0]
+}
+
+function getMembershipStatus(end: string | null): { type: 'expired' | 'active' | 'none'; daysLeft: number } {
+  if (!end) return { type: 'none', daysLeft: 0 }
+  const daysLeft = Math.ceil((new Date(end).getTime() - Date.now()) / 86400000)
+  return { type: daysLeft < 0 ? 'expired' : 'active', daysLeft }
+}
 
 export default function FinancePage() {
   const [members, setMembers] = useState<Member[]>([])
@@ -45,6 +58,8 @@ export default function FinancePage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
   const [updating, setUpdating] = useState<string | null>(null)
+  const [dateEdit, setDateEdit] = useState<DateField | null>(null)
+  const [savingDate, setSavingDate] = useState(false)
   const { t } = useLanguage()
 
   useEffect(() => {
@@ -73,8 +88,33 @@ export default function FinancePage() {
     setUpdating(null)
   }
 
+  const startDateEdit = (id: string, field: 'start' | 'end', current: string | null) => {
+    if (savingDate) return
+    setDateEdit({ id, field, value: toDateInput(current) })
+  }
+
+  const saveDateEdit = async () => {
+    if (!dateEdit) return
+    setSavingDate(true)
+    const key = dateEdit.field === 'start' ? 'membershipStart' : 'membershipEnd'
+    const res = await fetch(`/api/finance/members/${dateEdit.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [key]: dateEdit.value || null }),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      setMembers(prev => prev.map(m => m.id === dateEdit.id ? { ...m, ...data } : m))
+    }
+    setDateEdit(null)
+    setSavingDate(false)
+  }
+
+  const cancelDateEdit = () => setDateEdit(null)
+
   const paid = members.filter(m => m.membershipPaid).length
   const unpaid = members.filter(m => !m.membershipPaid).length
+  const expired = members.filter(m => getMembershipStatus(m.membershipEnd).type === 'expired').length
   const revenue = paid * MEMBERSHIP_PRICE
 
   const filtered = members.filter(m => {
@@ -91,6 +131,7 @@ export default function FinancePage() {
     { label: t('fin_stat_total'), value: members.length, color: 'text-white', icon: <Users size={16} /> },
     { label: t('fin_stat_paid'), value: paid, color: 'text-green-400', icon: <CheckCircle2 size={16} /> },
     { label: t('fin_stat_unpaid'), value: unpaid, color: 'text-yellow-400', icon: <XCircle size={16} /> },
+    { label: t('mem_expired'), value: expired, color: 'text-red-400', icon: <AlertTriangle size={16} /> },
     { label: t('fin_stat_revenue'), value: `${revenue} kr`, color: 'text-brand', icon: <TrendingUp size={16} /> },
   ]
 
@@ -110,7 +151,7 @@ export default function FinancePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-8">
         {stats.map(({ label, value, color, icon }) => (
           <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
             <div className={`flex items-center gap-2 mb-2 ${color}`}>
@@ -146,7 +187,6 @@ export default function FinancePage() {
         <div className="text-zinc-600 text-center py-20">{t('fin_loading')}</div>
       ) : tab === 'payments' ? (
         <>
-          {/* Search + filter */}
           <div className="flex flex-col sm:flex-row gap-3 mb-5">
             <div className="relative flex-1 max-w-sm">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
@@ -172,59 +212,131 @@ export default function FinancePage() {
             </div>
           </div>
 
-          {/* Payments table */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800">
-                    {[t('fin_col_name'), t('fin_col_email'), t('fin_col_swish'), t('fin_col_checkins'), t('fin_col_status'), t('fin_col_expires'), t('fin_col_action')].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wider font-medium">{h}</th>
+                    {[
+                      t('fin_col_name'), t('fin_col_email'), t('fin_col_swish'),
+                      t('fin_col_checkins'), t('fin_col_status'),
+                      t('fin_col_start'), t('fin_col_expires'), t('fin_col_action'),
+                    ].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wider font-medium whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(member => {
-                    const expiry = member.membershipExpiry ? new Date(member.membershipExpiry) : null
-                    const isExpiringSoon = expiry && (expiry.getTime() - Date.now()) < 14 * 24 * 60 * 60 * 1000
+                    const status = getMembershipStatus(member.membershipEnd)
+                    const isExpiringSoon = status.type === 'active' && status.daysLeft <= 14
+                    const editingStart = dateEdit?.id === member.id && dateEdit.field === 'start'
+                    const editingEnd = dateEdit?.id === member.id && dateEdit.field === 'end'
+
                     return (
-                      <tr key={member.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                      <tr key={member.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors">
+                        {/* Name */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold">
+                            <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold shrink-0">
                               {member.name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="text-white font-medium">{member.name}</span>
+                            <span className="text-white font-medium whitespace-nowrap">{member.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-zinc-400">{member.email}</td>
-                        <td className="px-4 py-3 text-zinc-400">{member.swishNumber ?? '–'}</td>
+
+                        <td className="px-4 py-3 text-zinc-400 text-xs">{member.email}</td>
+                        <td className="px-4 py-3 text-zinc-400 text-xs">{member.swishNumber ?? '–'}</td>
                         <td className="px-4 py-3 text-zinc-400 text-center">{member._count.checkIns}</td>
+
+                        {/* Status */}
                         <td className="px-4 py-3">
                           {member.membershipPaid ? (
-                            <span className="flex items-center gap-1 text-green-400 text-xs">
+                            <span className="flex items-center gap-1 text-green-400 text-xs whitespace-nowrap">
                               <CheckCircle2 size={12} /> {t('fin_paid')}
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-yellow-500 text-xs">
+                            <span className="flex items-center gap-1 text-yellow-500 text-xs whitespace-nowrap">
                               <XCircle size={12} /> {t('fin_unpaid')}
                             </span>
                           )}
                         </td>
+
+                        {/* Start date */}
                         <td className="px-4 py-3">
-                          {expiry ? (
-                            <span className={`text-xs ${isExpiringSoon ? 'text-yellow-400' : 'text-zinc-400'}`}>
-                              {formatDate(expiry)}
-                            </span>
+                          {editingStart ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                autoFocus
+                                type="date"
+                                value={dateEdit!.value}
+                                onChange={e => setDateEdit(d => d ? { ...d, value: e.target.value } : d)}
+                                onKeyDown={e => { if (e.key === 'Enter') saveDateEdit(); if (e.key === 'Escape') cancelDateEdit() }}
+                                className="bg-zinc-800 border border-brand text-white text-xs rounded px-2 py-1 focus:outline-none w-32"
+                              />
+                              <button onClick={saveDateEdit} disabled={savingDate} className="text-green-400 hover:text-green-300 text-xs">✓</button>
+                              <button onClick={cancelDateEdit} className="text-zinc-500 hover:text-zinc-300 text-xs">✕</button>
+                            </div>
                           ) : (
-                            <span className="text-zinc-700 text-xs">–</span>
+                            <button
+                              onClick={() => startDateEdit(member.id, 'start', member.membershipStart)}
+                              className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors text-left"
+                            >
+                              {member.membershipStart ? formatDate(member.membershipStart) : <span className="text-zinc-700">–</span>}
+                            </button>
                           )}
                         </td>
+
+                        {/* End date + badge */}
+                        <td className="px-4 py-3">
+                          {editingEnd ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                autoFocus
+                                type="date"
+                                value={dateEdit!.value}
+                                onChange={e => setDateEdit(d => d ? { ...d, value: e.target.value } : d)}
+                                onKeyDown={e => { if (e.key === 'Enter') saveDateEdit(); if (e.key === 'Escape') cancelDateEdit() }}
+                                className="bg-zinc-800 border border-brand text-white text-xs rounded px-2 py-1 focus:outline-none w-32"
+                              />
+                              <button onClick={saveDateEdit} disabled={savingDate} className="text-green-400 hover:text-green-300 text-xs">✓</button>
+                              <button onClick={cancelDateEdit} className="text-zinc-500 hover:text-zinc-300 text-xs">✕</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startDateEdit(member.id, 'end', member.membershipEnd)}
+                              className="text-left group"
+                            >
+                              {member.membershipEnd ? (
+                                <div>
+                                  <div className={`text-xs group-hover:underline ${status.type === 'expired' ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-zinc-400'}`}>
+                                    {formatDate(member.membershipEnd)}
+                                  </div>
+                                  <div className="mt-0.5">
+                                    {status.type === 'expired' ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-red-900/30 text-red-400 border border-red-800/30">
+                                        <AlertTriangle size={9} /> {t('mem_expired')}
+                                      </span>
+                                    ) : (
+                                      <span className={`text-[10px] ${isExpiringSoon ? 'text-yellow-400' : 'text-zinc-600'}`}>
+                                        {t('mem_days_left').replace('{n}', String(status.daysLeft))}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-zinc-700 text-xs">–</span>
+                              )}
+                            </button>
+                          )}
+                        </td>
+
+                        {/* Toggle paid */}
                         <td className="px-4 py-3">
                           <button
                             onClick={() => togglePayment(member)}
                             disabled={updating === member.id}
-                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 ${
+                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 whitespace-nowrap ${
                               member.membershipPaid
                                 ? 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200'
                                 : 'bg-brand hover:bg-brand-hover text-white'
@@ -247,7 +359,6 @@ export default function FinancePage() {
       ) : (
         /* Attendance tab */
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Sessions table */}
           <div className="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-zinc-800">
               <h2 className="text-sm font-semibold text-white uppercase tracking-wider">{t('fin_attendance_title')}</h2>
@@ -276,10 +387,7 @@ export default function FinancePage() {
                           <div className="flex items-center gap-2">
                             <span className="text-white font-semibold">{s._count.checkIns}</span>
                             <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden min-w-[60px]">
-                              <div
-                                className="h-full bg-brand rounded-full"
-                                style={{ width: `${pct}%` }}
-                              />
+                              <div className="h-full bg-brand rounded-full" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
                         </td>
@@ -291,7 +399,6 @@ export default function FinancePage() {
             </div>
           </div>
 
-          {/* Top members */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-zinc-800">
               <h2 className="text-sm font-semibold text-white uppercase tracking-wider">{t('fin_top_title')}</h2>

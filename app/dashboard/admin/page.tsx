@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, Search, Trash2, Users, ShieldCheck, Sword, Wallet } from 'lucide-react'
+import { CheckCircle2, XCircle, Search, Trash2, Users, ShieldCheck, Sword, Wallet, AlertTriangle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -13,19 +13,33 @@ type Member = {
   swishNumber: string | null
   phone: string | null
   membershipPaid: boolean
-  membershipExpiry: string | null
+  membershipStart: string | null
+  membershipEnd: string | null
   createdAt: string
   _count: { checkIns: number }
 }
 
+type DateField = { id: string; field: 'start' | 'end'; value: string }
+
 const ALL_ROLES = ['MEMBER', 'TRAINER', 'FIGHTER', 'FINANCE', 'ADMIN'] as const
 
 const ROLE_META: Record<string, { icon: React.ReactNode; color: string }> = {
-  MEMBER:  { icon: <Users  size={14} />, color: 'text-zinc-400'  },
+  MEMBER:  { icon: <Users size={14} />,       color: 'text-zinc-400'   },
   TRAINER: { icon: <ShieldCheck size={14} />, color: 'text-blue-400'   },
-  FIGHTER: { icon: <Sword  size={14} />, color: 'text-brand'     },
-  FINANCE: { icon: <Wallet size={14} />, color: 'text-yellow-400' },
+  FIGHTER: { icon: <Sword size={14} />,       color: 'text-brand'      },
+  FINANCE: { icon: <Wallet size={14} />,      color: 'text-yellow-400' },
   ADMIN:   { icon: <ShieldCheck size={14} />, color: 'text-purple-400' },
+}
+
+function toDateInput(d: string | null): string {
+  if (!d) return ''
+  return new Date(d).toISOString().split('T')[0]
+}
+
+function getMembershipStatus(end: string | null): { type: 'expired' | 'active' | 'none'; daysLeft: number } {
+  if (!end) return { type: 'none', daysLeft: 0 }
+  const daysLeft = Math.ceil((new Date(end).getTime() - Date.now()) / 86400000)
+  return { type: daysLeft < 0 ? 'expired' : 'active', daysLeft }
 }
 
 export default function AdminDashboardPage() {
@@ -36,6 +50,8 @@ export default function AdminDashboardPage() {
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [updating, setUpdating] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [dateEdit, setDateEdit] = useState<DateField | null>(null)
+  const [savingDate, setSavingDate] = useState(false)
   const { t } = useLanguage()
 
   useEffect(() => {
@@ -64,9 +80,7 @@ export default function AdminDashboardPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role }),
     })
-    if (res.ok) {
-      setMembers(prev => prev.map(m => m.id === member.id ? { ...m, role } : m))
-    }
+    if (res.ok) setMembers(prev => prev.map(m => m.id === member.id ? { ...m, role } : m))
   }
 
   const deleteMember = async (member: Member) => {
@@ -76,6 +90,30 @@ export default function AdminDashboardPage() {
     if (res.ok) setMembers(prev => prev.filter(m => m.id !== member.id))
     setDeleting(null)
   }
+
+  const startDateEdit = (id: string, field: 'start' | 'end', current: string | null) => {
+    if (savingDate) return
+    setDateEdit({ id, field, value: toDateInput(current) })
+  }
+
+  const saveDateEdit = async () => {
+    if (!dateEdit) return
+    setSavingDate(true)
+    const key = dateEdit.field === 'start' ? 'membershipStart' : 'membershipEnd'
+    const res = await fetch(`/api/admin/members/${dateEdit.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [key]: dateEdit.value || null }),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      setMembers(prev => prev.map(m => m.id === dateEdit.id ? { ...m, ...data } : m))
+    }
+    setDateEdit(null)
+    setSavingDate(false)
+  }
+
+  const cancelDateEdit = () => setDateEdit(null)
 
   const filtered = members.filter(m => {
     const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -91,14 +129,12 @@ export default function AdminDashboardPage() {
   const paid = members.filter(m => m.membershipPaid).length
   const unpaid = members.filter(m => !m.membershipPaid).length
   const totalCheckIns = members.reduce((s, m) => s + m._count.checkIns, 0)
+  const expired = members.filter(m => getMembershipStatus(m.membershipEnd).type === 'expired').length
 
   const getRoleLabel = (role: string) => {
     const map: Record<string, string> = {
-      MEMBER: t('adm_role_member'),
-      TRAINER: t('adm_role_trainer'),
-      FIGHTER: t('adm_role_fighter'),
-      FINANCE: t('adm_role_finance'),
-      ADMIN: t('adm_role_admin'),
+      MEMBER: t('adm_role_member'), TRAINER: t('adm_role_trainer'),
+      FIGHTER: t('adm_role_fighter'), FINANCE: t('adm_role_finance'), ADMIN: t('adm_role_admin'),
     }
     return map[role] ?? role
   }
@@ -107,12 +143,12 @@ export default function AdminDashboardPage() {
     { label: t('adm_stat_total'), value: members.length, color: 'text-white' },
     { label: t('adm_stat_paid'), value: paid, color: 'text-green-400' },
     { label: t('adm_stat_unpaid'), value: unpaid, color: 'text-yellow-400' },
+    { label: t('mem_expired'), value: expired, color: 'text-red-400' },
     { label: t('adm_stat_checkins'), value: totalCheckIns, color: 'text-brand' },
   ]
 
   const roleStats = ALL_ROLES.map(role => ({
-    role,
-    label: getRoleLabel(role),
+    role, label: getRoleLabel(role),
     count: members.filter(m => m.role === role).length,
     meta: ROLE_META[role],
   }))
@@ -126,7 +162,7 @@ export default function AdminDashboardPage() {
   const columns = [
     t('adm_col_name'), t('adm_col_email'), t('adm_col_swish'),
     t('adm_col_role'), t('adm_col_checkins'), t('adm_col_status'),
-    t('adm_col_expires'), t('adm_col_action'),
+    t('adm_col_start'), t('adm_col_expires'), t('adm_col_action'),
   ]
 
   return (
@@ -139,7 +175,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Primary stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-4">
         {primaryStats.map(({ label, value, color }) => (
           <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-center">
             <div className={`text-2xl font-bold mb-1 ${color}`} style={{ fontFamily: 'var(--font-display)' }}>
@@ -213,7 +249,7 @@ export default function AdminDashboardPage() {
               <thead>
                 <tr className="border-b border-zinc-800">
                   {columns.map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wider font-medium">
+                    <th key={h} className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wider font-medium whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -222,21 +258,31 @@ export default function AdminDashboardPage() {
               </thead>
               <tbody>
                 {filtered.map(member => {
-                  const expiry = member.membershipExpiry ? new Date(member.membershipExpiry) : null
-                  const isExpiringSoon = expiry && (expiry.getTime() - Date.now()) < 14 * 24 * 60 * 60 * 1000
+                  const status = getMembershipStatus(member.membershipEnd)
+                  const isExpiringSoon = status.type === 'active' && status.daysLeft <= 14
                   const meta = ROLE_META[member.role] ?? ROLE_META.MEMBER
+                  const editingStart = dateEdit?.id === member.id && dateEdit.field === 'start'
+                  const editingEnd = dateEdit?.id === member.id && dateEdit.field === 'end'
+
                   return (
-                    <tr key={member.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                    <tr key={member.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors">
+                      {/* Name */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold">
+                          <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold shrink-0">
                             {member.name.charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-white font-medium">{member.name}</span>
+                          <span className="text-white font-medium whitespace-nowrap">{member.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-zinc-400">{member.email}</td>
-                      <td className="px-4 py-3 text-zinc-400">{member.swishNumber ?? '–'}</td>
+
+                      {/* Email */}
+                      <td className="px-4 py-3 text-zinc-400 text-xs">{member.email}</td>
+
+                      {/* Swish */}
+                      <td className="px-4 py-3 text-zinc-400 text-xs">{member.swishNumber ?? '–'}</td>
+
+                      {/* Role */}
                       <td className="px-4 py-3">
                         <select
                           value={member.role}
@@ -250,32 +296,98 @@ export default function AdminDashboardPage() {
                           <option value="ADMIN">{t('adm_role_admin')}</option>
                         </select>
                       </td>
+
+                      {/* Check-ins */}
                       <td className="px-4 py-3 text-zinc-400 text-center">{member._count.checkIns}</td>
+
+                      {/* Status */}
                       <td className="px-4 py-3">
                         {member.membershipPaid ? (
-                          <span className="flex items-center gap-1 text-green-400 text-xs">
+                          <span className="flex items-center gap-1 text-green-400 text-xs whitespace-nowrap">
                             <CheckCircle2 size={12} /> {t('adm_paid')}
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-yellow-500 text-xs">
+                          <span className="flex items-center gap-1 text-yellow-500 text-xs whitespace-nowrap">
                             <XCircle size={12} /> {t('adm_unpaid_status')}
                           </span>
                         )}
                       </td>
+
+                      {/* Start date */}
                       <td className="px-4 py-3">
-                        {expiry ? (
-                          <span className={`text-xs ${isExpiringSoon ? 'text-yellow-400' : 'text-zinc-400'}`}>
-                            {formatDate(expiry)}
-                          </span>
+                        {editingStart ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              autoFocus
+                              type="date"
+                              value={dateEdit!.value}
+                              onChange={e => setDateEdit(d => d ? { ...d, value: e.target.value } : d)}
+                              onKeyDown={e => { if (e.key === 'Enter') saveDateEdit(); if (e.key === 'Escape') cancelDateEdit() }}
+                              className="bg-zinc-800 border border-brand text-white text-xs rounded px-2 py-1 focus:outline-none w-32"
+                            />
+                            <button onClick={saveDateEdit} disabled={savingDate} className="text-green-400 hover:text-green-300 text-xs">✓</button>
+                            <button onClick={cancelDateEdit} className="text-zinc-500 hover:text-zinc-300 text-xs">✕</button>
+                          </div>
                         ) : (
-                          <span className="text-zinc-700 text-xs">–</span>
+                          <button
+                            onClick={() => startDateEdit(member.id, 'start', member.membershipStart)}
+                            className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors text-left"
+                          >
+                            {member.membershipStart ? formatDate(member.membershipStart) : <span className="text-zinc-700">– kl</span>}
+                          </button>
                         )}
                       </td>
+
+                      {/* End date + badge */}
+                      <td className="px-4 py-3">
+                        {editingEnd ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              autoFocus
+                              type="date"
+                              value={dateEdit!.value}
+                              onChange={e => setDateEdit(d => d ? { ...d, value: e.target.value } : d)}
+                              onKeyDown={e => { if (e.key === 'Enter') saveDateEdit(); if (e.key === 'Escape') cancelDateEdit() }}
+                              className="bg-zinc-800 border border-brand text-white text-xs rounded px-2 py-1 focus:outline-none w-32"
+                            />
+                            <button onClick={saveDateEdit} disabled={savingDate} className="text-green-400 hover:text-green-300 text-xs">✓</button>
+                            <button onClick={cancelDateEdit} className="text-zinc-500 hover:text-zinc-300 text-xs">✕</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startDateEdit(member.id, 'end', member.membershipEnd)}
+                            className="text-left group"
+                          >
+                            {member.membershipEnd ? (
+                              <div>
+                                <div className={`text-xs group-hover:underline ${status.type === 'expired' ? 'text-red-400' : isExpiringSoon ? 'text-yellow-400' : 'text-zinc-400'}`}>
+                                  {formatDate(member.membershipEnd)}
+                                </div>
+                                <div className="mt-0.5">
+                                  {status.type === 'expired' ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-red-900/30 text-red-400 border border-red-800/30">
+                                      <AlertTriangle size={9} /> {t('mem_expired')}
+                                    </span>
+                                  ) : (
+                                    <span className={`text-[10px] ${isExpiringSoon ? 'text-yellow-400' : 'text-zinc-600'}`}>
+                                      {t('mem_days_left').replace('{n}', String(status.daysLeft))}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-zinc-700 text-xs">–</span>
+                            )}
+                          </button>
+                        )}
+                      </td>
+
+                      {/* Toggle paid */}
                       <td className="px-4 py-3">
                         <button
                           onClick={() => toggleMembership(member)}
                           disabled={updating === member.id}
-                          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 ${
+                          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 whitespace-nowrap ${
                             member.membershipPaid
                               ? 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200'
                               : 'bg-brand hover:bg-brand-hover text-white'
@@ -284,6 +396,8 @@ export default function AdminDashboardPage() {
                           {updating === member.id ? '...' : member.membershipPaid ? t('adm_revoke') : t('adm_confirm')}
                         </button>
                       </td>
+
+                      {/* Delete */}
                       <td className="px-4 py-3">
                         <button
                           onClick={() => deleteMember(member)}
@@ -300,9 +414,7 @@ export default function AdminDashboardPage() {
               </tbody>
             </table>
             {filtered.length === 0 && (
-              <div className="text-center py-12 text-zinc-600 text-sm">
-                {t('adm_no_match')}
-              </div>
+              <div className="text-center py-12 text-zinc-600 text-sm">{t('adm_no_match')}</div>
             )}
           </div>
         </div>

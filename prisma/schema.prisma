@@ -27,7 +27,8 @@ model User {
   avatarUrl            String?
   usernameChangesCount Int       @default(0)
   membershipPaid       Boolean   @default(false)
-  membershipExpiry     DateTime?
+  membershipStart      DateTime?
+  membershipEnd        DateTime? @map("membershipExpiry")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
