@@ -125,6 +125,30 @@ const translations = {
     login_loading: 'Loggar in...',
     login_no_account: 'Inget konto?',
     login_register_link: 'Registrera dig',
+    login_forgot: 'Glömt lösenordet?',
+
+    // Forgot password
+    fp_title: 'Glömt lösenord',
+    fp_sub: 'Ange din e-post så skickar vi en återställningslänk',
+    fp_email: 'E-post',
+    fp_submit: 'Skicka återställningslänk',
+    fp_submitting: 'Skickar...',
+    fp_success: 'Om det e-postadressen finns hos oss har vi skickat en länk. Kolla din inkorg.',
+    fp_back: 'Tillbaka till inloggning',
+
+    // Reset password
+    rp_title: 'Nytt lösenord',
+    rp_sub: 'Ange ditt nya lösenord nedan',
+    rp_new_pass: 'Nytt lösenord',
+    rp_confirm_pass: 'Bekräfta lösenord',
+    rp_submit: 'Spara nytt lösenord',
+    rp_submitting: 'Sparar...',
+    rp_success: 'Ditt lösenord har uppdaterats. Du kan nu logga in.',
+    rp_invalid: 'Länken är ogiltig eller har gått ut. Begär en ny återställningslänk.',
+    rp_mismatch: 'Lösenorden matchar inte',
+    rp_validating: 'Validerar länk...',
+    rp_go_login: 'Gå till inloggning',
+    rp_new_request: 'Begär ny länk',
 
     // Register
     reg_title: 'Bli Medlem',
@@ -435,6 +459,30 @@ const translations = {
     login_loading: 'Logging in...',
     login_no_account: 'No account?',
     login_register_link: 'Register',
+    login_forgot: 'Forgot password?',
+
+    // Forgot password
+    fp_title: 'Forgot Password',
+    fp_sub: 'Enter your email and we will send you a reset link',
+    fp_email: 'Email',
+    fp_submit: 'Send reset link',
+    fp_submitting: 'Sending...',
+    fp_success: 'If that email exists we have sent a reset link. Check your inbox.',
+    fp_back: 'Back to login',
+
+    // Reset password
+    rp_title: 'New Password',
+    rp_sub: 'Enter your new password below',
+    rp_new_pass: 'New password',
+    rp_confirm_pass: 'Confirm password',
+    rp_submit: 'Save new password',
+    rp_submitting: 'Saving...',
+    rp_success: 'Your password has been updated. You can now log in.',
+    rp_invalid: 'This link is invalid or has expired. Request a new reset link.',
+    rp_mismatch: 'Passwords do not match',
+    rp_validating: 'Validating link...',
+    rp_go_login: 'Go to login',
+    rp_new_request: 'Request new link',
 
     // Register
     reg_title: 'Become a Member',
