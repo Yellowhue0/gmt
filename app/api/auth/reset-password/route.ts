@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
+import { logAudit, getIp } from '@/lib/audit'
 
 function hashToken(raw: string): string {
   return crypto.createHash('sha256').update(raw).digest('hex')
@@ -16,7 +17,6 @@ async function findUserByToken(raw: string) {
   })
 }
 
-// GET – validate token (called by the reset-password page on mount)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const token = searchParams.get('token')
@@ -28,7 +28,6 @@ export async function GET(request: Request) {
   return NextResponse.json({ data: 'ok' })
 }
 
-// POST – set new password
 export async function POST(request: Request) {
   try {
     const { token, password } = await request.json()
@@ -36,7 +35,6 @@ export async function POST(request: Request) {
     if (!token || !password) {
       return NextResponse.json({ error: 'Token och lösenord krävs' }, { status: 400 })
     }
-
     if (password.length < 8) {
       return NextResponse.json({ error: 'Lösenordet måste vara minst 8 tecken' }, { status: 400 })
     }
@@ -48,6 +46,14 @@ export async function POST(request: Request) {
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashed, resetToken: null, resetTokenExpiry: null },
+    })
+
+    await logAudit({
+      action: 'PASSWORD_RESET',
+      performedBy: user.id,
+      targetUser: user.id,
+      details: 'Password reset via email link',
+      ipAddress: getIp(request),
     })
 
     return NextResponse.json({ data: 'ok' })

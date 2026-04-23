@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { signToken } from '@/lib/auth'
+import { logAudit, getIp } from '@/lib/audit'
 
 export async function POST(request: Request) {
   const { name, email, password, swishNumber, phone } = await request.json()
@@ -21,6 +22,14 @@ export async function POST(request: Request) {
   const hashed = await hash(password, 12)
   const user = await prisma.user.create({
     data: { name, email, password: hashed, swishNumber: swishNumber || null, phone: phone || null },
+  })
+
+  await logAudit({
+    action: 'ACCOUNT_CREATED',
+    performedBy: user.id,
+    targetUser: user.id,
+    details: `Account created for ${user.email}`,
+    ipAddress: getIp(request),
   })
 
   const token = await signToken({

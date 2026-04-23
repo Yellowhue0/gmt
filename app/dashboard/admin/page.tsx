@@ -1,9 +1,30 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, Search, Trash2, Users, ShieldCheck, Sword, Wallet, AlertTriangle } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import Link from 'next/link'
+import { CheckCircle2, XCircle, Search, Trash2, Users, ShieldCheck, Sword, Wallet, AlertTriangle, Clock, Shield } from 'lucide-react'
+import { formatDate, formatRelative } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
+import type { TranslationKey } from '@/lib/i18n'
+
+type AuditEntry = {
+  id: string
+  action: string
+  performedByName: string
+  targetUserName: string | null
+  details: string | null
+  createdAt: string
+}
+
+const ACTION_STYLES: Record<string, string> = {
+  LOGIN:               'bg-zinc-800 text-zinc-300 border-zinc-700',
+  ACCOUNT_CREATED:     'bg-green-900/40 text-green-400 border-green-800/50',
+  PASSWORD_RESET:      'bg-red-900/40 text-red-400 border-red-800/50',
+  ROLE_CHANGED:        'bg-blue-900/40 text-blue-400 border-blue-800/50',
+  MEMBERSHIP_UPDATED:  'bg-purple-900/40 text-purple-400 border-purple-800/50',
+  PAYMENT_MARKED:      'bg-brand/20 text-brand border-brand/30',
+  PROFILE_UPDATED:     'bg-yellow-900/30 text-yellow-400 border-yellow-800/40',
+}
 
 type Member = {
   id: string
@@ -52,7 +73,28 @@ export default function AdminDashboardPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [dateEdit, setDateEdit] = useState<DateField | null>(null)
   const [savingDate, setSavingDate] = useState(false)
+  const [timeline, setTimeline] = useState<Record<string, AuditEntry[]>>({})
+  const [timelineOpen, setTimelineOpen] = useState<string | null>(null)
+  const [timelineLoading, setTimelineLoading] = useState<string | null>(null)
   const { t } = useLanguage()
+
+  const getActionLabel = (a: string): string => {
+    const key = `action_${a}` as TranslationKey
+    return t(key) !== key ? t(key) : a
+  }
+
+  const toggleTimeline = async (id: string) => {
+    if (timelineOpen === id) { setTimelineOpen(null); return }
+    setTimelineOpen(id)
+    if (timeline[id]) return
+    setTimelineLoading(id)
+    const res = await fetch(`/api/admin/audit-log?userId=${id}&page=1`)
+    if (res.ok) {
+      const { data } = await res.json()
+      setTimeline(prev => ({ ...prev, [id]: data }))
+    }
+    setTimelineLoading(null)
+  }
 
   useEffect(() => {
     fetch('/api/admin/members')
@@ -163,15 +205,25 @@ export default function AdminDashboardPage() {
     t('adm_col_name'), t('adm_col_email'), t('adm_col_swish'),
     t('adm_col_role'), t('adm_col_checkins'), t('adm_col_status'),
     t('adm_col_start'), t('adm_col_expires'), t('adm_col_action'),
+    t('audit_history'),
   ]
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-          {t('adm_title')}
-        </h1>
-        <p className="text-zinc-500">{t('adm_sub')}</p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+            {t('adm_title')}
+          </h1>
+          <p className="text-zinc-500">{t('adm_sub')}</p>
+        </div>
+        <Link
+          href="/dashboard/admin/audit-log"
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white text-sm rounded-lg transition-colors"
+        >
+          <Shield size={14} />
+          {t('audit_link')}
+        </Link>
       </div>
 
       {/* Primary stats */}
@@ -408,7 +460,64 @@ export default function AdminDashboardPage() {
                           <Trash2 size={14} />
                         </button>
                       </td>
+
+                      {/* History toggle */}
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => toggleTimeline(member.id)}
+                          className={`p-1.5 rounded transition-colors ${
+                            timelineOpen === member.id
+                              ? 'text-brand bg-brand/10'
+                              : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800'
+                          }`}
+                          title={t('audit_history')}
+                        >
+                          <Clock size={14} />
+                        </button>
+                      </td>
                     </tr>
+
+                    {/* Timeline panel */}
+                    {timelineOpen === member.id && (
+                      <tr key={`${member.id}-timeline`}>
+                        <td colSpan={11} className="px-4 pb-4 bg-zinc-950/50">
+                          <div className="border border-zinc-800 rounded-lg overflow-hidden">
+                            <div className="px-3 py-2 border-b border-zinc-800 flex items-center gap-2">
+                              <Clock size={12} className="text-zinc-500" />
+                              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                                {t('audit_history')} – {member.name}
+                              </span>
+                            </div>
+                            {timelineLoading === member.id ? (
+                              <p className="px-3 py-4 text-center text-zinc-600 text-xs">{t('audit_loading')}</p>
+                            ) : (timeline[member.id]?.length ?? 0) === 0 ? (
+                              <p className="px-3 py-4 text-center text-zinc-600 text-xs">{t('audit_no_history')}</p>
+                            ) : (
+                              <ul className="divide-y divide-zinc-800/50 max-h-64 overflow-y-auto">
+                                {timeline[member.id].map(entry => (
+                                  <li key={entry.id} className="flex items-start gap-3 px-3 py-2.5">
+                                    <span className={`shrink-0 mt-0.5 text-[10px] px-1.5 py-0.5 rounded border font-medium ${ACTION_STYLES[entry.action] ?? ACTION_STYLES.LOGIN}`}>
+                                      {getActionLabel(entry.action)}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      {entry.details && (
+                                        <p className="text-zinc-400 text-xs truncate">{entry.details}</p>
+                                      )}
+                                      <p className="text-zinc-600 text-[10px]">
+                                        {t('audit_col_by')}: {entry.performedByName}
+                                      </p>
+                                    </div>
+                                    <span className="shrink-0 text-zinc-700 text-[10px] whitespace-nowrap">
+                                      {formatRelative(entry.createdAt)}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   )
                 })}
               </tbody>

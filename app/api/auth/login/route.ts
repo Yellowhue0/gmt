@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { compare } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { signToken } from '@/lib/auth'
+import { logAudit, getIp } from '@/lib/audit'
 
 export async function POST(request: Request) {
   try {
@@ -21,9 +22,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Fel e-post eller lösenord' }, { status: 401 })
     }
 
+    await logAudit({
+      action: 'LOGIN',
+      performedBy: user.id,
+      targetUser: user.id,
+      ipAddress: getIp(request),
+    })
+
     const token = await signToken({
       userId: user.id,
-      role: user.role as 'MEMBER' | 'TRAINER' | 'ADMIN',
+      role: user.role as 'MEMBER' | 'TRAINER' | 'FIGHTER' | 'FINANCE' | 'ADMIN',
       name: user.name,
       email: user.email,
     })
@@ -42,6 +50,6 @@ export async function POST(request: Request) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[login]', message)
-    return Response.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

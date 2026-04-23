@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { logAudit, getIp } from '@/lib/audit'
 
 const MAX_NAME_CHANGES = 2
 const MAX_BIO_LENGTH = 200
@@ -11,16 +12,16 @@ export async function PATCH(request: Request) {
 
   const body = await request.json()
   const data: Record<string, unknown> = {}
+  const details: string[] = []
 
-  // Bio update
   if (typeof body.bio === 'string') {
     if (body.bio.length > MAX_BIO_LENGTH) {
       return NextResponse.json({ error: `Bio får max vara ${MAX_BIO_LENGTH} tecken` }, { status: 400 })
     }
     data.bio = body.bio.trim() || null
+    details.push('bio updated')
   }
 
-  // Username change
   if (typeof body.name === 'string') {
     const newName = body.name.trim()
     if (!newName) return NextResponse.json({ error: 'Namn krävs' }, { status: 400 })
@@ -41,6 +42,7 @@ export async function PATCH(request: Request) {
 
     data.name = newName
     data.usernameChangesCount = { increment: 1 }
+    details.push(`username changed from "${current.name}" to "${newName}"`)
   }
 
   if (Object.keys(data).length === 0) {
@@ -50,12 +52,15 @@ export async function PATCH(request: Request) {
   const updated = await prisma.user.update({
     where: { id: user.userId },
     data,
-    select: {
-      id: true,
-      name: true,
-      bio: true,
-      usernameChangesCount: true,
-    },
+    select: { id: true, name: true, bio: true, usernameChangesCount: true },
+  })
+
+  await logAudit({
+    action: 'PROFILE_UPDATED',
+    performedBy: user.userId,
+    targetUser: user.userId,
+    details: details.join('; '),
+    ipAddress: getIp(request),
   })
 
   return NextResponse.json({ data: updated })
