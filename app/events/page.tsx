@@ -1,24 +1,29 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { MapPin, Calendar, Plus, Trash2 } from 'lucide-react'
+import { MapPin, Calendar, Plus, Trash2, Pencil, Users, Check, X } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
 
-type Event = {
+type EventItem = {
   id: string
   title: string
   description: string | null
   date: string
+  time: string | null
   location: string | null
+  hostName: string | null
   type: string
   createdAt: string
+  _count: { attendees: number }
+  attendees: { userId: string }[]
 }
 
-type User = { role: string } | null
+type CurrentUser = { role: string } | null
 
 const TYPE_COLORS: Record<string, string> = {
   COMPETITION: 'bg-brand/20 text-brand border border-brand/30',
+  EVENT: 'bg-purple-900/30 text-purple-400 border border-purple-800/30',
   FIGHT: 'bg-red-900/30 text-red-400 border border-red-900/30',
   SEMINAR: 'bg-blue-900/30 text-blue-400 border border-blue-900/30',
   OTHER: 'bg-zinc-700 text-zinc-300',
@@ -26,18 +31,23 @@ const TYPE_COLORS: Record<string, string> = {
 
 const EVENT_TYPE_KEYS: Record<string, TranslationKey> = {
   COMPETITION: 'etype_competition',
+  EVENT: 'etype_event',
   FIGHT: 'etype_fight',
   SEMINAR: 'etype_seminar',
   OTHER: 'etype_other',
 }
 
+const EMPTY_FORM = { title: '', description: '', date: '', time: '', location: '', hostName: '', type: 'COMPETITION' }
+
 export default function EventsPage() {
-  const [events, setEvents] = useState<Event[]>([])
-  const [user, setUser] = useState<User>(null)
+  const [events, setEvents] = useState<EventItem[]>([])
+  const [user, setUser] = useState<CurrentUser>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ title: '', description: '', date: '', location: '', type: 'COMPETITION' })
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
+  const [attendingLoading, setAttendingLoading] = useState<string | null>(null)
   const { lang, t } = useLanguage()
 
   useEffect(() => {
@@ -51,19 +61,66 @@ export default function EventsPage() {
     })
   }, [])
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const canManage = user?.role === 'ADMIN' || user?.role === 'TRAINER'
+  const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
+
+  const openCreate = () => {
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setShowForm(true)
+  }
+
+  const openEdit = (ev: EventItem) => {
+    setEditingId(ev.id)
+    const d = new Date(ev.date)
+    const dateStr = d.toISOString().split('T')[0]
+    setForm({
+      title: ev.title,
+      description: ev.description ?? '',
+      date: dateStr,
+      time: ev.time ?? '',
+      location: ev.location ?? '',
+      hostName: ev.hostName ?? '',
+      type: ev.type,
+    })
+    setShowForm(true)
+  }
+
+  const closeForm = () => {
+    setShowForm(false)
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    const res = await fetch('/api/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    if (res.ok) {
-      const { data } = await res.json()
-      setEvents(prev => [...prev, data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()))
-      setForm({ title: '', description: '', date: '', location: '', type: 'COMPETITION' })
-      setShowForm(false)
+
+    const datetime = form.time ? `${form.date}T${form.time}` : `${form.date}T00:00`
+    const payload = { ...form, date: datetime }
+
+    if (editingId) {
+      const res = await fetch(`/api/events/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        const { data } = await res.json()
+        setEvents(prev => prev.map(ev => ev.id === editingId ? { ...ev, ...data } : ev))
+        closeForm()
+      }
+    } else {
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        const { data } = await res.json()
+        setEvents(prev => [...prev, data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()))
+        closeForm()
+      }
     }
     setSubmitting(false)
   }
@@ -74,8 +131,24 @@ export default function EventsPage() {
     if (res.ok) setEvents(prev => prev.filter(e => e.id !== id))
   }
 
-  const isAdmin = user?.role === 'ADMIN'
-  const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
+  const handleAttend = async (id: string) => {
+    if (!user) return
+    setAttendingLoading(id)
+    const res = await fetch(`/api/events/${id}/attend`, { method: 'POST' })
+    if (res.ok) {
+      const { data } = await res.json()
+      setEvents(prev => prev.map(ev => {
+        if (ev.id !== id) return ev
+        const wasAttending = ev.attendees.length > 0
+        return {
+          ...ev,
+          attendees: data.attending ? [{ userId: 'me' }] : [],
+          _count: { attendees: ev._count.attendees + (data.attending ? 1 : wasAttending ? -1 : 0) },
+        }
+      }))
+    }
+    setAttendingLoading(null)
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -86,21 +159,23 @@ export default function EventsPage() {
           </h1>
           <p className="text-zinc-500">{t('ev_sub')}</p>
         </div>
-        {isAdmin && (
+        {canManage && (
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={showForm && !editingId ? closeForm : openCreate}
             className="flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-medium rounded transition-colors"
           >
-            <Plus size={16} />
-            {t('ev_add')}
+            {showForm && !editingId ? <X size={16} /> : <Plus size={16} />}
+            {showForm && !editingId ? t('ev_cancel') : t('ev_add')}
           </button>
         )}
       </div>
 
-      {/* Create form (admin only) */}
-      {showForm && isAdmin && (
-        <form onSubmit={handleCreate} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-8 space-y-4">
-          <h2 className="text-white font-semibold mb-4">{t('ev_new')}</h2>
+      {/* Create / Edit form */}
+      {showForm && canManage && (
+        <form onSubmit={handleSubmit} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-8 space-y-4">
+          <h2 className="text-white font-semibold mb-4">
+            {editingId ? t('ev_edit_title') : t('ev_new')}
+          </h2>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-zinc-400 mb-1.5">{t('ev_label_title')}</label>
@@ -113,12 +188,30 @@ export default function EventsPage() {
               />
             </div>
             <div>
+              <label className="block text-sm text-zinc-400 mb-1.5">{t('ev_label_host')}</label>
+              <input
+                value={form.hostName}
+                onChange={e => setForm(f => ({ ...f, hostName: e.target.value }))}
+                className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-brand"
+                placeholder="Glommen Muay Thai"
+              />
+            </div>
+            <div>
               <label className="block text-sm text-zinc-400 mb-1.5">{t('ev_label_date')}</label>
               <input
                 required
-                type="datetime-local"
+                type="date"
                 value={form.date}
                 onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-zinc-400 mb-1.5">{t('ev_label_time')}</label>
+              <input
+                type="time"
+                value={form.time}
+                onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
                 className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-brand"
               />
             </div>
@@ -138,9 +231,8 @@ export default function EventsPage() {
                 onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                 className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-brand"
               >
-                {(['COMPETITION', 'FIGHT', 'SEMINAR', 'OTHER'] as const).map(tp => (
-                  <option key={tp} value={tp}>{t(EVENT_TYPE_KEYS[tp])}</option>
-                ))}
+                <option value="COMPETITION">{t('etype_competition')}</option>
+                <option value="EVENT">{t('etype_event')}</option>
               </select>
             </div>
           </div>
@@ -154,10 +246,18 @@ export default function EventsPage() {
             />
           </div>
           <div className="flex gap-3">
-            <button type="submit" disabled={submitting} className="px-6 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-medium rounded transition-colors disabled:opacity-60">
-              {submitting ? t('ev_saving') : t('ev_save')}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-6 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-medium rounded transition-colors disabled:opacity-60"
+            >
+              {submitting ? t('ev_saving') : editingId ? t('ev_update') : t('ev_save')}
             </button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded transition-colors">
+            <button
+              type="button"
+              onClick={closeForm}
+              className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded transition-colors"
+            >
               {t('ev_cancel')}
             </button>
           </div>
@@ -176,6 +276,9 @@ export default function EventsPage() {
           {events.map(ev => {
             const d = new Date(ev.date)
             const isClose = (d.getTime() - Date.now()) < 7 * 24 * 60 * 60 * 1000
+            const isAttending = ev.attendees?.length > 0
+            const attendeeCount = ev._count?.attendees ?? 0
+
             return (
               <div
                 key={ev.id}
@@ -183,6 +286,7 @@ export default function EventsPage() {
                   isClose ? 'border-brand/30' : 'border-zinc-800'
                 }`}
               >
+                {/* Header */}
                 <div className="bg-gradient-to-r from-brand/20 to-transparent px-5 py-4 flex items-center justify-between">
                   <div>
                     <div className="text-brand text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
@@ -197,25 +301,76 @@ export default function EventsPage() {
                   </span>
                 </div>
 
+                {/* Body */}
                 <div className="p-5">
-                  <h3 className="text-white font-semibold text-lg mb-2">{ev.title}</h3>
+                  <h3 className="text-white font-semibold text-lg mb-1">{ev.title}</h3>
+
+                  {/* Meta */}
+                  <div className="space-y-1 mb-3">
+                    {ev.time && (
+                      <div className="flex items-center gap-1.5 text-zinc-500 text-sm">
+                        <Calendar size={13} />
+                        {ev.time}
+                      </div>
+                    )}
+                    {ev.location && (
+                      <div className="flex items-center gap-1.5 text-zinc-500 text-sm">
+                        <MapPin size={13} />
+                        {ev.location}
+                      </div>
+                    )}
+                    {ev.hostName && (
+                      <div className="text-zinc-500 text-sm">
+                        {ev.hostName}
+                      </div>
+                    )}
+                  </div>
+
                   {ev.description && (
                     <p className="text-zinc-500 text-sm mb-3 leading-relaxed">{ev.description}</p>
                   )}
-                  {ev.location && (
-                    <div className="flex items-center gap-1.5 text-zinc-500 text-sm">
-                      <MapPin size={13} />
-                      {ev.location}
+
+                  {/* Attendance row */}
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800">
+                    <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+                      <Users size={12} />
+                      {attendeeCount} {t('ev_attendees')}
                     </div>
-                  )}
-                  {isAdmin && (
-                    <button
-                      onClick={() => handleDelete(ev.id)}
-                      className="mt-4 flex items-center gap-1.5 text-zinc-600 hover:text-red-400 text-xs transition-colors"
-                    >
-                      <Trash2 size={12} />
-                      {t('ev_delete')}
-                    </button>
+
+                    {user ? (
+                      <button
+                        onClick={() => handleAttend(ev.id)}
+                        disabled={attendingLoading === ev.id}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
+                          isAttending
+                            ? 'bg-brand/20 text-brand border border-brand/30 hover:bg-red-900/20 hover:text-red-400 hover:border-red-800/30'
+                            : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-brand/20 hover:text-brand hover:border-brand/30'
+                        }`}
+                      >
+                        {isAttending ? <Check size={11} /> : <Plus size={11} />}
+                        {isAttending ? t('ev_attending') : t('ev_not_attending')}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {/* Admin/Trainer actions */}
+                  {canManage && (
+                    <div className="flex items-center gap-3 mt-3">
+                      <button
+                        onClick={() => openEdit(ev)}
+                        className="flex items-center gap-1.5 text-zinc-600 hover:text-zinc-300 text-xs transition-colors"
+                      >
+                        <Pencil size={11} />
+                        {t('ev_edit')}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(ev.id)}
+                        className="flex items-center gap-1.5 text-zinc-600 hover:text-red-400 text-xs transition-colors"
+                      >
+                        <Trash2 size={11} />
+                        {t('ev_delete')}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
