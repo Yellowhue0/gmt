@@ -193,7 +193,7 @@ export default function EventsPage() {
                 value={form.hostName}
                 onChange={e => setForm(f => ({ ...f, hostName: e.target.value }))}
                 className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-brand"
-                placeholder="Glommen Muay Thai"
+                placeholder="GLOMMENS MUAY THAI"
               />
             </div>
             <div>

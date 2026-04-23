@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const anton = Anton({ weight: '400', subsets: ['latin'], variable: '--font-display' })
 
 export const metadata: Metadata = {
-  title: 'Glommens Muay Thai – Falkenberg',
+  title: 'GLOMMENS MUAY THAI',
   description:
     'Vi har thaiboxningsträning för dig som är nybörjare, har tränat Muay Thai tidigare, kanske vill tävla eller för dig som bara letar efter en bra och rolig motionsform.',
 }

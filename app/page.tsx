@@ -78,7 +78,7 @@ export default function HomePage() {
           {/* Logo badge */}
           <div className="flex justify-center mb-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/glommenlogo.svg" alt="Glommens Muay Thai" className="w-28 h-28 sm:w-36 sm:h-36 drop-shadow-2xl" />
+            <img src="/glommenlogo.svg" alt="GLOMMENS MUAY THAI" className="w-28 h-28 sm:w-36 sm:h-36 drop-shadow-2xl" />
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand/30 text-brand text-xs font-medium mb-5 uppercase tracking-widest">
             {t('home_badge')}
@@ -87,9 +87,9 @@ export default function HomePage() {
             className="text-5xl sm:text-7xl font-bold mb-6 leading-none tracking-wide uppercase"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            <span className="text-white">Glommens</span>
+            <span className="text-white">GLOMMENS</span>
             <br />
-            <span className="text-brand">Muay Thai</span>
+            <span className="text-brand">MUAY THAI</span>
           </h1>
           <p className="text-zinc-400 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
             {t('home_subtitle')}

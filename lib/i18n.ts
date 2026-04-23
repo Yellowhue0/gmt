@@ -280,7 +280,7 @@ const translations = {
     foot_contact: 'Kontakt & Sociala medier',
     foot_location: 'Falkenberg, Sverige',
     foot_facebook: 'Facebook-grupp',
-    foot_copyright: '© {year} Glommens Muay Thai. Alla rättigheter förbehållna.',
+    foot_copyright: '© {year} GLOMMENS MUAY THAI. Alla rättigheter förbehållna.',
 
     // Days
     day_0: 'Söndag', day_1: 'Måndag', day_2: 'Tisdag', day_3: 'Onsdag',
@@ -586,7 +586,7 @@ const translations = {
     foot_contact: 'Contact & Social Media',
     foot_location: 'Falkenberg, Sweden',
     foot_facebook: 'Facebook group',
-    foot_copyright: '© {year} Glommens Muay Thai. All rights reserved.',
+    foot_copyright: '© {year} GLOMMENS MUAY THAI. All rights reserved.',
 
     // Days
     day_0: 'Sunday', day_1: 'Monday', day_2: 'Tuesday', day_3: 'Wednesday',

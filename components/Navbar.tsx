@@ -90,14 +90,14 @@ export default function Navbar() {
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <Image
               src="/glommenlogo.svg"
-              alt="GLOMMEN MUAY THAI"
+              alt="GLOMMENS MUAY THAI"
               width={40}
               height={40}
               className="object-contain"
               priority
             />
             <span className="font-bold text-white tracking-widest hidden sm:block uppercase text-sm">
-              GLOMMEN MUAY THAI
+              GLOMMENS MUAY THAI
             </span>
           </Link>
 
