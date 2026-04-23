@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, Clock, Users } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, Users, ShieldAlert } from 'lucide-react'
 import { formatDate, SWISH_NUMBER, MEMBERSHIP_PRICE, getSessionTypeLabel } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
@@ -16,6 +16,8 @@ type User = {
   swishNumber: string | null
 }
 
+type ConfirmedTrainer = { user: { id: string; name: string } }
+
 type Session = {
   id: string
   name: string
@@ -25,8 +27,12 @@ type Session = {
   dayOfWeek: number
   isToday: boolean
   checkedIn: boolean
+  iAmConfirmed: boolean
   checkInCount: number
   maxCapacity: number
+  isCancelled: boolean
+  cancellationReason: string | null
+  confirmedTrainers: ConfirmedTrainer[]
 }
 
 const ROLE_KEY: Record<string, TranslationKey> = {
@@ -55,6 +61,7 @@ export default function DashboardPage() {
   }, [])
 
   const handleCheckIn = async (session: Session) => {
+    if (session.isCancelled) return
     const method = session.checkedIn ? 'DELETE' : 'POST'
     const res = await fetch('/api/checkin', {
       method,
@@ -70,9 +77,33 @@ export default function DashboardPage() {
     }
   }
 
+  const handleConfirmTrainer = async (session: Session) => {
+    const res = await fetch(`/api/sessions/${session.id}/confirm-trainer`, { method: 'POST' })
+    if (res.ok) {
+      const { data } = await res.json()
+      setSessions(prev => prev.map(s =>
+        s.id === session.id
+          ? { ...s, confirmedTrainers: data.confirmedTrainers, iAmConfirmed: !s.iAmConfirmed }
+          : s
+      ))
+    }
+  }
+
+  const handleUncancel = async (session: Session) => {
+    const res = await fetch(`/api/sessions/${session.id}/uncancel`, { method: 'POST' })
+    if (res.ok) {
+      setSessions(prev => prev.map(s =>
+        s.id === session.id
+          ? { ...s, isCancelled: false, cancellationReason: null }
+          : s
+      ))
+    }
+  }
+
   if (loading) return <div className="text-zinc-600 text-center py-20">{t('dash_loading')}</div>
   if (!user) return null
 
+  const isTrainerOrAdmin = user.role === 'ADMIN' || user.role === 'TRAINER'
   const todaySessions = sessions.filter(s => s.isToday)
   const expiry = user.membershipExpiry ? new Date(user.membershipExpiry) : null
   const isExpiring = expiry && (expiry.getTime() - Date.now()) < 14 * 24 * 60 * 60 * 1000
@@ -155,34 +186,147 @@ export default function DashboardPage() {
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
             {todaySessions.map(s => (
-              <div key={s.id} className="bg-zinc-900 border border-brand/20 rounded-xl p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">
-                    {getSessionTypeLabel(s.type)}
-                  </span>
-                  <span className="text-zinc-600 text-xs flex items-center gap-1">
-                    <Users size={11} /> {s.checkInCount}/{s.maxCapacity}
-                  </span>
-                </div>
-                <h3 className="text-white font-semibold mb-1">{s.name}</h3>
-                <div className="flex items-center gap-1 text-zinc-500 text-sm mb-4">
-                  <Clock size={13} /> {s.startTime}–{s.endTime}
-                </div>
-                <button
-                  onClick={() => handleCheckIn(s)}
-                  className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
-                    s.checkedIn
-                      ? 'bg-brand/20 text-brand border border-brand/30 hover:bg-brand/30'
-                      : 'bg-brand hover:bg-brand-hover text-white'
-                  }`}
-                >
-                  {s.checkedIn ? t('dash_checked_in') : t('dash_checkin')}
-                </button>
-              </div>
+              <SessionCard
+                key={s.id}
+                session={s}
+                isTrainerOrAdmin={isTrainerOrAdmin}
+                onCheckIn={() => handleCheckIn(s)}
+                onConfirmTrainer={() => handleConfirmTrainer(s)}
+                onUncancel={() => handleUncancel(s)}
+                t={t}
+              />
             ))}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function SessionCard({
+  session: s,
+  isTrainerOrAdmin,
+  onCheckIn,
+  onConfirmTrainer,
+  onUncancel,
+  t,
+}: {
+  session: Session
+  isTrainerOrAdmin: boolean
+  onCheckIn: () => void
+  onConfirmTrainer: () => void
+  onUncancel: () => void
+  t: (key: string) => string
+}) {
+  const hasConfirmedTrainers = s.confirmedTrainers.length > 0
+
+  if (s.isCancelled) {
+    return (
+      <div className="relative bg-zinc-900 border border-red-900/60 rounded-xl p-4 overflow-hidden">
+        {/* crimson tint overlay */}
+        <div className="absolute inset-0 bg-red-950/40 rounded-xl pointer-events-none" />
+        {/* pulsing glow border */}
+        <div className="absolute inset-0 rounded-xl border border-red-700/50 animate-pulse pointer-events-none" />
+
+        <div className="relative z-10">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs bg-zinc-800/80 text-zinc-400 px-2 py-0.5 rounded-full">
+              {getSessionTypeLabel(s.type)}
+            </span>
+            {/* CANCELLED stamp */}
+            <span className="text-xs font-black tracking-widest text-red-400 border border-red-700/60 bg-red-950/60 px-2 py-0.5 rounded">
+              {t('tr_cancelled_badge')}
+            </span>
+          </div>
+
+          <h3 className="text-zinc-500 font-semibold mb-1 line-through">{s.name}</h3>
+          <div className="flex items-center gap-1 text-zinc-600 text-sm mb-3 line-through">
+            <Clock size={13} /> {s.startTime}–{s.endTime}
+          </div>
+
+          {s.cancellationReason && (
+            <p className="text-red-400/80 text-xs mb-3 bg-red-950/30 rounded px-2 py-1.5 border border-red-900/30">
+              {t('tr_cancelled_reason')}: {s.cancellationReason}
+            </p>
+          )}
+
+          {isTrainerOrAdmin ? (
+            <button
+              onClick={onUncancel}
+              className="w-full py-2 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors"
+            >
+              {t('tr_uncancel_class')}
+            </button>
+          ) : (
+            <div className="w-full py-2 rounded-lg text-sm font-medium text-center text-red-400/80 bg-red-950/20 border border-red-900/30">
+              {t('tr_cancelled_badge')}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-zinc-900 border border-brand/20 rounded-xl p-4">
+      <div className="flex justify-between items-start mb-3">
+        <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">
+          {getSessionTypeLabel(s.type)}
+        </span>
+        <span className="text-zinc-600 text-xs flex items-center gap-1">
+          <Users size={11} /> {s.checkInCount}/{s.maxCapacity}
+        </span>
+      </div>
+
+      <h3 className="text-white font-semibold mb-1">{s.name}</h3>
+      <div className="flex items-center gap-1 text-zinc-500 text-sm mb-3">
+        <Clock size={13} /> {s.startTime}–{s.endTime}
+      </div>
+
+      {/* Confirmed trainers or TBC badge */}
+      <div className="mb-3">
+        {hasConfirmedTrainers ? (
+          <div className="flex flex-wrap gap-1">
+            {s.confirmedTrainers.map(ct => (
+              <span
+                key={ct.user.id}
+                className="text-[10px] bg-green-900/30 text-green-400 border border-green-800/40 px-2 py-0.5 rounded-full"
+              >
+                {ct.user.name}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-[10px] bg-yellow-900/20 text-yellow-500 border border-yellow-800/30 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+            <ShieldAlert size={10} /> {t('tr_trainer_tbc')}
+          </span>
+        )}
+      </div>
+
+      {/* Trainer/admin confirm button */}
+      {isTrainerOrAdmin && (
+        <button
+          onClick={onConfirmTrainer}
+          className={`w-full py-1.5 rounded-lg text-xs font-medium mb-2 transition-colors ${
+            s.iAmConfirmed
+              ? 'bg-green-900/30 text-green-400 border border-green-800/40 hover:bg-green-900/50'
+              : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:text-white hover:bg-zinc-700'
+          }`}
+        >
+          {s.iAmConfirmed ? t('tr_confirmed_session') : t('tr_confirm_session')}
+        </button>
+      )}
+
+      <button
+        onClick={onCheckIn}
+        className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+          s.checkedIn
+            ? 'bg-brand/20 text-brand border border-brand/30 hover:bg-brand/30'
+            : 'bg-brand hover:bg-brand-hover text-white'
+        }`}
+      >
+        {s.checkedIn ? t('dash_checked_in') : t('dash_checkin')}
+      </button>
     </div>
   )
 }

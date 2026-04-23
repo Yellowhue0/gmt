@@ -34,30 +34,45 @@ model User {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  checkIns        CheckIn[]
-  posts           Post[]
-  comments        Comment[]
-  sessions        GymSession[]    @relation("TrainerSessions")
-  notifications   Notification[]
-  eventAttendees  EventAttendee[]
-  createdEvents   Event[]         @relation("EventCreator")
+  checkIns           CheckIn[]
+  posts              Post[]
+  comments           Comment[]
+  sessions           GymSession[]             @relation("TrainerSessions")
+  notifications      Notification[]
+  eventAttendees     EventAttendee[]
+  createdEvents      Event[]                  @relation("EventCreator")
+  confirmedSessions  SessionConfirmedTrainer[]
 }
 
 model GymSession {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  dayOfWeek   Int
-  startTime   String
-  endTime     String
-  type        String   @default("regular")
-  trainerId   String?
-  trainer     User?    @relation("TrainerSessions", fields: [trainerId], references: [id])
-  maxCapacity Int      @default(20)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id                 String    @id @default(cuid())
+  name               String
+  description        String?
+  dayOfWeek          Int
+  startTime          String
+  endTime            String
+  type               String    @default("regular")
+  trainerId          String?
+  trainer            User?     @relation("TrainerSessions", fields: [trainerId], references: [id])
+  maxCapacity        Int       @default(20)
+  isActive           Boolean   @default(true)
+  isCancelled        Boolean   @default(false)
+  cancellationReason String?
+  cancelledAt        DateTime?
+  cancelledBy        String?
+  createdAt          DateTime  @default(now())
 
-  checkIns CheckIn[]
+  checkIns          CheckIn[]
+  confirmedTrainers SessionConfirmedTrainer[]
+}
+
+model SessionConfirmedTrainer {
+  sessionId String
+  userId    String
+  session   GymSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, userId])
 }
 
 model CheckIn {

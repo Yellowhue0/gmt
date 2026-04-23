@@ -4,33 +4,45 @@ import { getCurrentUser } from '@/lib/auth'
 import { getTodayString } from '@/lib/utils'
 
 export async function GET() {
+  const user = await getCurrentUser()
+  const today = getTodayString()
+  const todayDow = new Date().getDay()
+
   const sessions = await prisma.gymSession.findMany({
     where: { isActive: true },
     include: {
       trainer: { select: { id: true, name: true } },
       _count: { select: { checkIns: true } },
+      confirmedTrainers: {
+        include: { user: { select: { id: true, name: true } } },
+      },
     },
     orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
   })
 
-  const user = await getCurrentUser()
-  const today = getTodayString()
-  const todayDow = new Date().getDay()
-
   let myCheckIns: string[] = []
+  let myConfirmed: string[] = []
   if (user) {
-    const checkIns = await prisma.checkIn.findMany({
-      where: { userId: user.userId, date: today },
-      select: { sessionId: true },
-    })
-    myCheckIns = checkIns.map((c) => c.sessionId)
+    const [checkIns, confirmed] = await Promise.all([
+      prisma.checkIn.findMany({
+        where: { userId: user.userId, date: today },
+        select: { sessionId: true },
+      }),
+      prisma.sessionConfirmedTrainer.findMany({
+        where: { userId: user.userId },
+        select: { sessionId: true },
+      }),
+    ])
+    myCheckIns = checkIns.map(c => c.sessionId)
+    myConfirmed = confirmed.map(c => c.sessionId)
   }
 
   return NextResponse.json({
-    data: sessions.map((s) => ({
+    data: sessions.map(s => ({
       ...s,
       isToday: s.dayOfWeek === todayDow,
       checkedIn: myCheckIns.includes(s.id),
+      iAmConfirmed: myConfirmed.includes(s.id),
       checkInCount: s._count.checkIns,
     })),
   })
