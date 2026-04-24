@@ -34,7 +34,7 @@ model User {
   usernameChangesCount Int       @default(0)
   membershipPaid       Boolean   @default(false)
   membershipStart      DateTime?
-  membershipExpiry     DateTime?
+  membershipEnd        DateTime? @map("membershipExpiry")
   resetToken           String?
   resetTokenExpiry     DateTime?
   createdAt            DateTime  @default(now())

@@ -87,7 +87,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const actor = await getCurrentUser()
@@ -96,9 +96,17 @@ export async function DELETE(
   }
 
   const { id } = await params
+  const target = await prisma.user.findUnique({ where: { id }, select: { name: true, email: true } })
   await prisma.checkIn.deleteMany({ where: { userId: id } })
   await prisma.comment.deleteMany({ where: { authorId: id } })
   await prisma.post.deleteMany({ where: { authorId: id } })
   await prisma.user.delete({ where: { id } })
+  await logAudit({
+    action: 'ACCOUNT_DELETED',
+    performedBy: actor.userId,
+    targetUser: id,
+    details: target ? `Deleted account: ${target.name} (${target.email})` : `Deleted account: ${id}`,
+    ipAddress: getIp(request),
+  })
   return NextResponse.json({ data: 'ok' })
 }

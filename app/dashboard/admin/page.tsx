@@ -317,6 +317,7 @@ export default function AdminDashboardPage() {
                   const editingEnd = dateEdit?.id === member.id && dateEdit.field === 'end'
 
                   return (
+                    <>
                     <tr key={member.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors">
                       {/* Name */}
                       <td className="px-4 py-3">
@@ -479,7 +480,7 @@ export default function AdminDashboardPage() {
 
                     {/* Timeline panel */}
                     {timelineOpen === member.id && (
-                      <tr key={`${member.id}-timeline`}>
+                      <tr key={`${member.id}-tl`}>
                         <td colSpan={11} className="px-4 pb-4 bg-zinc-950/50">
                           <div className="border border-zinc-800 rounded-lg overflow-hidden">
                             <div className="px-3 py-2 border-b border-zinc-800 flex items-center gap-2">
@@ -518,6 +519,7 @@ export default function AdminDashboardPage() {
                         </td>
                       </tr>
                     )}
+                    </>
                   )
                 })}
               </tbody>
