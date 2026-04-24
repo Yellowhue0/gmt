@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Bell } from 'lucide-react'
+import { Menu, X, Bell, Shield } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { formatRelative } from '@/lib/utils'
 
@@ -180,9 +180,15 @@ export default function Navbar() {
                   </Link>
                 )}
                 {isAdmin && (
-                  <Link href="/dashboard/admin" className="text-sm text-zinc-400 hover:text-white transition-colors">
-                    {t('nav_admin')}
-                  </Link>
+                  <>
+                    <Link href="/dashboard/admin" className="text-sm text-zinc-400 hover:text-white transition-colors">
+                      {t('nav_admin')}
+                    </Link>
+                    <Link href="/dashboard/admin/audit-log" className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white transition-colors">
+                      <Shield size={13} />
+                      {t('audit_link')}
+                    </Link>
+                  </>
                 )}
                 <button onClick={logout} className="text-sm text-zinc-600 hover:text-zinc-400 transition-colors">
                   {t('nav_logout')}
@@ -247,9 +253,15 @@ export default function Navbar() {
                     </Link>
                   )}
                   {isAdmin && (
-                    <Link href="/dashboard/admin" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
-                      {t('nav_admin')}
-                    </Link>
+                    <>
+                      <Link href="/dashboard/admin" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
+                        {t('nav_admin')}
+                      </Link>
+                      <Link href="/dashboard/admin/audit-log" onClick={() => setOpen(false)} className="flex items-center gap-1.5 px-2 py-2 text-zinc-300 hover:text-white text-sm">
+                        <Shield size={13} />
+                        {t('audit_link')}
+                      </Link>
+                    </>
                   )}
                   <button onClick={() => { logout(); setOpen(false) }} className="block w-full text-left px-2 py-2 text-zinc-500 hover:text-white text-sm">
                     {t('nav_logout')}

@@ -26,6 +26,7 @@ type Meta = { total: number; page: number; pages: number; pageSize: number }
 const ACTION_STYLES: Record<string, { badge: string; dot: string }> = {
   LOGIN:               { badge: 'bg-zinc-800 text-zinc-300 border-zinc-700',          dot: 'bg-zinc-500'   },
   ACCOUNT_CREATED:     { badge: 'bg-green-900/40 text-green-400 border-green-800/50', dot: 'bg-green-500'  },
+  ACCOUNT_DELETED:     { badge: 'bg-red-900/50 text-red-300 border-red-700/50',       dot: 'bg-red-400'    },
   PASSWORD_RESET:      { badge: 'bg-red-900/40 text-red-400 border-red-800/50',       dot: 'bg-red-500'    },
   ROLE_CHANGED:        { badge: 'bg-blue-900/40 text-blue-400 border-blue-800/50',    dot: 'bg-blue-500'   },
   MEMBERSHIP_UPDATED:  { badge: 'bg-purple-900/40 text-purple-400 border-purple-800/50', dot: 'bg-purple-500' },
@@ -34,7 +35,7 @@ const ACTION_STYLES: Record<string, { badge: string; dot: string }> = {
 }
 
 const ALL_ACTIONS = [
-  'LOGIN', 'ACCOUNT_CREATED', 'PASSWORD_RESET',
+  'LOGIN', 'ACCOUNT_CREATED', 'ACCOUNT_DELETED', 'PASSWORD_RESET',
   'ROLE_CHANGED', 'MEMBERSHIP_UPDATED', 'PAYMENT_MARKED', 'PROFILE_UPDATED',
 ]
 
