@@ -15,6 +15,8 @@ type Member = {
   membershipStart: string | null
   membershipEnd: string | null
   _count: { checkIns: number }
+  isChild?: boolean
+  parentName?: string
 }
 
 type SessionStat = {
@@ -76,7 +78,10 @@ export default function FinancePage() {
 
   const togglePayment = async (member: Member) => {
     setUpdating(member.id)
-    const res = await fetch(`/api/finance/members/${member.id}`, {
+    const url = member.isChild
+      ? `/api/finance/children/${member.id}`
+      : `/api/finance/members/${member.id}`
+    const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ membershipPaid: !member.membershipPaid }),
@@ -96,8 +101,12 @@ export default function FinancePage() {
   const saveDateEdit = async () => {
     if (!dateEdit) return
     setSavingDate(true)
+    const memberRow = members.find(m => m.id === dateEdit.id)
+    const url = memberRow?.isChild
+      ? `/api/finance/children/${dateEdit.id}`
+      : `/api/finance/members/${dateEdit.id}`
     const key = dateEdit.field === 'start' ? 'membershipStart' : 'membershipEnd'
-    const res = await fetch(`/api/finance/members/${dateEdit.id}`, {
+    const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [key]: dateEdit.value || null }),
@@ -241,7 +250,19 @@ export default function FinancePage() {
                             <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold shrink-0">
                               {member.name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="text-white font-medium whitespace-nowrap">{member.name}</span>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-white font-medium whitespace-nowrap">{member.name}</span>
+                                {member.isChild && (
+                                  <span className="text-[9px] font-black text-sky-400 border border-sky-700/60 bg-sky-950/50 px-1.5 py-0.5 rounded shrink-0">
+                                    {t('adm_junior_badge')}
+                                  </span>
+                                )}
+                              </div>
+                              {member.parentName && (
+                                <p className="text-zinc-600 text-[10px]">{t('pend_parent_label')}: {member.parentName}</p>
+                              )}
+                            </div>
                           </div>
                         </td>
 

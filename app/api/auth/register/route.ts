@@ -6,13 +6,20 @@ import { logAudit, getIp } from '@/lib/audit'
 import { notifyMany } from '@/lib/notify'
 
 export async function POST(request: Request) {
-  const { name, email, password, swishNumber, phone } = await request.json()
+  const body = await request.json()
+  const { name, email, password, swishNumber, phone, registerForChild, child } = body
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: 'Namn, e-post och lösenord krävs' }, { status: 400 })
   }
   if (password.length < 8) {
     return NextResponse.json({ error: 'Lösenordet måste vara minst 8 tecken' }, { status: 400 })
+  }
+
+  if (registerForChild) {
+    if (!child?.firstName || !child?.lastName || !child?.dateOfBirth) {
+      return NextResponse.json({ error: 'Barnets förnamn, efternamn och födelsedatum krävs' }, { status: 400 })
+    }
   }
 
   const existing = await prisma.user.findUnique({ where: { email } })
@@ -28,35 +35,49 @@ export async function POST(request: Request) {
       password: hashed,
       swishNumber: swishNumber || null,
       phone: phone || null,
+      role: registerForChild ? 'PARENT' : 'MEMBER',
       isConfirmed: false,
     },
   })
+
+  let childRecord = null
+  if (registerForChild && child) {
+    childRecord = await prisma.childMember.create({
+      data: {
+        firstName: child.firstName,
+        lastName: child.lastName,
+        dateOfBirth: new Date(child.dateOfBirth),
+        parentId: user.id,
+        isConfirmed: false,
+      },
+    })
+  }
 
   await logAudit({
     action: 'ACCOUNT_CREATED',
     performedBy: user.id,
     targetUser: user.id,
-    details: `Account created for ${user.email}`,
+    details: registerForChild
+      ? `Parent account created for ${user.email} with child ${child.firstName} ${child.lastName}`
+      : `Account created for ${user.email}`,
     ipAddress: getIp(request),
   })
 
-  // Notify all admins and trainers about new pending member
+  // Notify all admins and trainers
   const staff = await prisma.user.findMany({
     where: { role: { in: ['ADMIN', 'TRAINER'] } },
     select: { id: true },
   })
   if (staff.length > 0) {
-    await notifyMany(
-      staff.map(s => s.id),
-      'Ny väntande medlem',
-      `${user.name} har registrerat sig och väntar på bekräftelse.`,
-      'INFO',
-    )
+    const message = registerForChild
+      ? `${user.name} (förälder) har registrerat sig med barn ${child.firstName} ${child.lastName} och väntar på bekräftelse.`
+      : `${user.name} har registrerat sig och väntar på bekräftelse.`
+    await notifyMany(staff.map(s => s.id), 'Ny väntande medlem', message)
   }
 
   const token = await signToken({
     userId: user.id,
-    role: user.role as 'MEMBER' | 'TRAINER' | 'ADMIN',
+    role: user.role as 'MEMBER' | 'PARENT',
     name: user.name,
     email: user.email,
     isConfirmed: false,
@@ -64,7 +85,18 @@ export async function POST(request: Request) {
   })
 
   const response = NextResponse.json(
-    { data: { id: user.id, name: user.name, email: user.email, role: user.role, isConfirmed: false } },
+    {
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isConfirmed: false,
+        child: childRecord
+          ? { id: childRecord.id, firstName: childRecord.firstName, lastName: childRecord.lastName }
+          : null,
+      },
+    },
     { status: 201 }
   )
   response.cookies.set('gmt-token', token, {

@@ -13,12 +13,15 @@ enum Role {
   FIGHTER
   FINANCE
   ADMIN
+  PARENT
+  JUNIOR
 }
 
 enum ClassType {
   REGULAR
   SPECIAL
   FIGHTERS_ONLY
+  KIDS_ONLY
 }
 
 model User {
@@ -56,6 +59,35 @@ model User {
   createdEvents     Event[]                  @relation("EventCreator")
   confirmedSessions SessionConfirmedTrainer[]
   assignedSessions  SessionAssignedTrainer[]
+  children          ChildMember[]            @relation("ParentChildren")
+}
+
+model ChildMember {
+  id              String    @id @default(cuid())
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime
+  parentId        String
+  parent          User      @relation("ParentChildren", fields: [parentId], references: [id])
+  isConfirmed     Boolean   @default(false)
+  membershipPaid  Boolean   @default(false)
+  membershipStart DateTime?
+  membershipEnd   DateTime?
+  createdAt       DateTime  @default(now())
+
+  checkIns ChildCheckIn[]
+}
+
+model ChildCheckIn {
+  id        String      @id @default(cuid())
+  childId   String
+  child     ChildMember @relation(fields: [childId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   GymSession  @relation(fields: [sessionId], references: [id])
+  date      String
+  createdAt DateTime    @default(now())
+
+  @@unique([childId, sessionId, date])
 }
 
 model GymSession {
@@ -82,6 +114,7 @@ model GymSession {
   createdAt          DateTime  @default(now())
 
   checkIns          CheckIn[]
+  childCheckIns     ChildCheckIn[]
   confirmedTrainers SessionConfirmedTrainer[]
   assignedTrainers  SessionAssignedTrainer[]
 }

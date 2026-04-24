@@ -16,6 +16,15 @@ type User = {
   swishNumber: string | null
 }
 
+type Child = {
+  id: string
+  firstName: string
+  lastName: string
+  isConfirmed: boolean
+  membershipPaid: boolean
+  membershipEnd: string | null
+}
+
 type ConfirmedTrainer = { user: { id: string; name: string } }
 
 type Session = {
@@ -24,6 +33,7 @@ type Session = {
   startTime: string
   endTime: string
   type: string
+  classType: string
   dayOfWeek: number
   isToday: boolean
   checkedIn: boolean
@@ -41,11 +51,15 @@ const ROLE_KEY: Record<string, TranslationKey> = {
   FIGHTER: 'role_fighter',
   FINANCE: 'role_finance',
   MEMBER: 'role_member',
+  PARENT: 'role_parent',
+  JUNIOR: 'role_junior',
 }
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
+  const [children, setChildren] = useState<Child[]>([])
+  const [childCheckIns, setChildCheckIns] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
   const { t } = useLanguage()
 
@@ -56,6 +70,9 @@ export default function DashboardPage() {
     ]).then(([u, s]) => {
       setUser(u.data)
       setSessions(s.data ?? [])
+      if (u.data?.role === 'PARENT') {
+        fetch('/api/children').then(r => r.json()).then(c => setChildren(c.data ?? []))
+      }
       setLoading(false)
     })
   }, [])
@@ -97,6 +114,27 @@ export default function DashboardPage() {
           ? { ...s, isCancelled: false, cancellationReason: null }
           : s
       ))
+    }
+  }
+
+  const handleChildCheckIn = async (childId: string, sessionId: string) => {
+    const checkedIn = (childCheckIns[childId] ?? []).includes(sessionId)
+    const method = checkedIn ? 'DELETE' : 'POST'
+    const res = await fetch(`/api/children/${childId}/checkin`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    })
+    if (res.ok) {
+      setChildCheckIns(prev => {
+        const current = prev[childId] ?? []
+        return {
+          ...prev,
+          [childId]: checkedIn
+            ? current.filter(id => id !== sessionId)
+            : [...current, sessionId],
+        }
+      })
     }
   }
 
@@ -172,6 +210,65 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Children section — PARENT only */}
+      {user.role === 'PARENT' && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-white mb-4">{t('dash_children')}</h2>
+          {children.length === 0 ? (
+            <p className="text-zinc-600 text-sm">{t('dash_children_empty')}</p>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {children.map(child => {
+                const expiry = child.membershipEnd ? new Date(child.membershipEnd) : null
+                const kidsSessions = todaySessions.filter(s => s.classType === 'KIDS_ONLY')
+                return (
+                  <div key={child.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-white font-semibold">{child.firstName} {child.lastName}</p>
+                        {!child.isConfirmed && (
+                          <span className="text-xs text-yellow-400">{t('dash_child_unconfirmed')}</span>
+                        )}
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                        child.membershipPaid
+                          ? 'text-green-400 border-green-800/40 bg-green-900/20'
+                          : 'text-yellow-500 border-yellow-800/40 bg-yellow-900/20'
+                      }`}>
+                        {child.membershipPaid ? t('dash_child_paid') : t('dash_child_unpaid')}
+                      </span>
+                    </div>
+                    {expiry && (
+                      <p className="text-zinc-500 text-xs mb-3">{t('dash_child_expires')} {formatDate(expiry)}</p>
+                    )}
+                    {kidsSessions.length > 0 && child.isConfirmed && (
+                      <div className="space-y-2">
+                        {kidsSessions.map(s => {
+                          const checkedIn = (childCheckIns[child.id] ?? []).includes(s.id)
+                          return (
+                            <button
+                              key={s.id}
+                              onClick={() => handleChildCheckIn(child.id, s.id)}
+                              className={`w-full py-2 rounded-lg text-xs font-medium transition-colors ${
+                                checkedIn
+                                  ? 'bg-brand/20 text-brand border border-brand/30 hover:bg-brand/30'
+                                  : 'bg-brand hover:bg-brand-hover text-white'
+                              }`}
+                            >
+                              {checkedIn ? t('dash_child_checked_in') : `${t('dash_child_checkin')}: ${s.name}`}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Today's sessions */}
       <div>

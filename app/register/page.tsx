@@ -11,11 +11,16 @@ export default function RegisterPage() {
   const router = useRouter()
   const { t } = useLanguage()
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', swishNumber: '' })
+  const [registerForChild, setRegisterForChild] = useState(false)
+  const [child, setChild] = useState({ firstName: '', lastName: '', dateOfBirth: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
+
+  const setChildField = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setChild(c => ({ ...c, [k]: e.target.value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,7 +30,7 @@ export default function RegisterPage() {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, registerForChild, child: registerForChild ? child : undefined }),
     })
 
     const data = await res.json()
@@ -94,6 +99,58 @@ export default function RegisterPage() {
               )}
             </div>
           ))}
+
+          {/* Child registration toggle */}
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={registerForChild}
+              onChange={e => setRegisterForChild(e.target.checked)}
+              className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-brand"
+            />
+            <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">
+              {t('reg_for_child')}
+            </span>
+          </label>
+
+          {registerForChild && (
+            <div className="border border-brand/20 rounded-lg p-4 space-y-3 bg-brand/5">
+              <p className="text-xs text-zinc-400">{t('reg_for_child_hint')}</p>
+              <h3 className="text-sm font-semibold text-white">{t('reg_child_section')}</h3>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1.5">{t('reg_child_firstname')}</label>
+                <input
+                  type="text"
+                  value={child.firstName}
+                  onChange={setChildField('firstName')}
+                  required
+                  className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2.5 text-sm focus:outline-none focus:border-brand transition-colors placeholder:text-zinc-600"
+                  placeholder="Förnamn"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1.5">{t('reg_child_lastname')}</label>
+                <input
+                  type="text"
+                  value={child.lastName}
+                  onChange={setChildField('lastName')}
+                  required
+                  className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2.5 text-sm focus:outline-none focus:border-brand transition-colors placeholder:text-zinc-600"
+                  placeholder="Efternamn"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1.5">{t('reg_child_dob')}</label>
+                <input
+                  type="date"
+                  value={child.dateOfBirth}
+                  onChange={setChildField('dateOfBirth')}
+                  required
+                  className="w-full bg-zinc-800 border border-zinc-700 text-white rounded px-3 py-2.5 text-sm focus:outline-none focus:border-brand transition-colors"
+                />
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"

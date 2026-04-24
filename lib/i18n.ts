@@ -391,6 +391,8 @@ const translations = {
     role_fighter: 'Fighter',
     role_finance: 'Ekonomi',
     role_member: 'Medlem',
+    role_parent: 'Förälder',
+    role_junior: 'Junior',
 
     // Event types
     etype_competition: 'Tävling',
@@ -432,6 +434,7 @@ const translations = {
     sess_ct_regular: 'Reguljärt',
     sess_ct_special: 'Special',
     sess_ct_fighters: 'Fighters Only',
+    sess_ct_kids: 'Barnklass',
     sess_vis_public: 'Offentligt',
     sess_vis_members: 'Endast Medlemmar',
     sess_vis_fighters: 'Fighters Only',
@@ -441,6 +444,31 @@ const translations = {
     sess_delete_recurring_title: 'Ta bort återkommande',
     sess_delete_this_only: 'Bara detta pass',
     sess_delete_all: 'Hela serien',
+
+    // Parent / child registration
+    reg_for_child: 'Registrerar för barn',
+    reg_for_child_hint: 'Du registrerar ett barn. Ange dina egna uppgifter som förälder ovan.',
+    reg_child_section: 'Barnets uppgifter',
+    reg_child_firstname: 'Förnamn *',
+    reg_child_lastname: 'Efternamn *',
+    reg_child_dob: 'Födelsedatum *',
+
+    // Parent dashboard — children section
+    dash_children: 'Mina barn',
+    dash_children_empty: 'Inga barn registrerade',
+    dash_child_unconfirmed: 'Väntar på bekräftelse',
+    dash_child_paid: 'Betalt',
+    dash_child_unpaid: 'Ej betalt',
+    dash_child_checkin: 'Checka in barn',
+    dash_child_checked_in: '✓ Incheckad',
+    dash_child_expires: 'Gäller till',
+
+    // Admin / pending
+    pend_parent_label: 'Förälder',
+    adm_role_parent: 'Förälder',
+    adm_role_junior: 'Junior',
+    adm_junior_badge: 'JUNIOR',
+    fin_role_junior: 'Junior',
   },
   en: {
     // Navbar
@@ -832,6 +860,8 @@ const translations = {
     role_fighter: 'Fighter',
     role_finance: 'Finance',
     role_member: 'Member',
+    role_parent: 'Parent',
+    role_junior: 'Junior',
 
     // Event types
     etype_competition: 'Competition',
@@ -873,6 +903,7 @@ const translations = {
     sess_ct_regular: 'Regular',
     sess_ct_special: 'Special',
     sess_ct_fighters: 'Fighters Only',
+    sess_ct_kids: 'Kids Class',
     sess_vis_public: 'Public',
     sess_vis_members: 'Members Only',
     sess_vis_fighters: 'Fighters Only',
@@ -882,6 +913,31 @@ const translations = {
     sess_delete_recurring_title: 'Delete recurring session',
     sess_delete_this_only: 'This session only',
     sess_delete_all: 'Entire series',
+
+    // Parent / child registration
+    reg_for_child: 'Registering for a child',
+    reg_for_child_hint: 'You are registering a child. Enter your own details as the parent above.',
+    reg_child_section: "Child's details",
+    reg_child_firstname: 'First name *',
+    reg_child_lastname: 'Last name *',
+    reg_child_dob: 'Date of birth *',
+
+    // Parent dashboard — children section
+    dash_children: 'My Children',
+    dash_children_empty: 'No children registered',
+    dash_child_unconfirmed: 'Pending confirmation',
+    dash_child_paid: 'Paid',
+    dash_child_unpaid: 'Not paid',
+    dash_child_checkin: 'Check in child',
+    dash_child_checked_in: '✓ Checked in',
+    dash_child_expires: 'Valid until',
+
+    // Admin / pending
+    pend_parent_label: 'Parent',
+    adm_role_parent: 'Parent',
+    adm_role_junior: 'Junior',
+    adm_junior_badge: 'JUNIOR',
+    fin_role_junior: 'Junior',
   },
 } as const
 

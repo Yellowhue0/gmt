@@ -39,6 +39,8 @@ type PendingMember = {
   name: string
   email: string
   createdAt: string
+  type?: 'user' | 'child'
+  parentName?: string
 }
 
 type Member = {
@@ -56,6 +58,8 @@ type Member = {
   lockedReason: string | null
   createdAt: string
   _count: { checkIns: number }
+  isChild?: boolean
+  parentName?: string
 }
 
 type DateField = { id: string; field: 'start' | 'end'; value: string }
@@ -137,7 +141,10 @@ export default function AdminDashboardPage() {
 
   const confirmMember = async (member: PendingMember) => {
     setConfirmingId(member.id)
-    const res = await fetch(`/api/members/${member.id}/confirm`, { method: 'POST' })
+    const endpoint = member.type === 'child'
+      ? `/api/children/${member.id}/confirm`
+      : `/api/members/${member.id}/confirm`
+    const res = await fetch(endpoint, { method: 'POST' })
     if (res.ok) {
       setPending(prev => prev.filter(p => p.id !== member.id))
       setMembers(prev => prev.map(m => m.id === member.id ? { ...m, isConfirmed: true } : m))
@@ -148,7 +155,10 @@ export default function AdminDashboardPage() {
   const rejectMember = async () => {
     if (!rejectTarget) return
     setRejecting(true)
-    const res = await fetch(`/api/members/${rejectTarget.id}/confirm`, {
+    const endpoint = rejectTarget.type === 'child'
+      ? `/api/children/${rejectTarget.id}/confirm`
+      : `/api/members/${rejectTarget.id}/confirm`
+    const res = await fetch(endpoint, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: rejectReason || null }),
@@ -164,7 +174,10 @@ export default function AdminDashboardPage() {
 
   const toggleMembership = async (member: Member) => {
     setUpdating(member.id)
-    const res = await fetch(`/api/admin/members/${member.id}`, {
+    const url = member.isChild
+      ? `/api/finance/children/${member.id}`
+      : `/api/admin/members/${member.id}`
+    const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ membershipPaid: !member.membershipPaid }),
@@ -188,7 +201,8 @@ export default function AdminDashboardPage() {
   const deleteMember = async (member: Member) => {
     if (!confirm(`Remove ${member.name}? This cannot be undone.`)) return
     setDeleting(member.id)
-    const res = await fetch(`/api/admin/members/${member.id}`, { method: 'DELETE' })
+    const url = member.isChild ? `/api/children/${member.id}` : `/api/admin/members/${member.id}`
+    const res = await fetch(url, { method: 'DELETE' })
     if (res.ok) setMembers(prev => prev.filter(m => m.id !== member.id))
     setDeleting(null)
   }
@@ -201,8 +215,12 @@ export default function AdminDashboardPage() {
   const saveDateEdit = async () => {
     if (!dateEdit) return
     setSavingDate(true)
+    const memberRow = members.find(m => m.id === dateEdit.id)
+    const url = memberRow?.isChild
+      ? `/api/finance/children/${dateEdit.id}`
+      : `/api/admin/members/${dateEdit.id}`
     const key = dateEdit.field === 'start' ? 'membershipStart' : 'membershipEnd'
-    const res = await fetch(`/api/admin/members/${dateEdit.id}`, {
+    const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [key]: dateEdit.value || null }),
@@ -334,8 +352,18 @@ export default function AdminDashboardPage() {
                     {p.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{p.name}</p>
-                    <p className="text-zinc-500 text-xs truncate">{p.email}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                      {p.type === 'child' && (
+                        <span className="text-[9px] font-black text-sky-400 border border-sky-700/60 bg-sky-950/50 px-1.5 py-0.5 rounded shrink-0">
+                          {t('adm_junior_badge')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-zinc-500 text-xs truncate">
+                      {p.email}
+                      {p.parentName && <span className="ml-1 text-zinc-600">({t('pend_parent_label')}: {p.parentName})</span>}
+                    </p>
                   </div>
                   <span className="text-zinc-600 text-xs whitespace-nowrap hidden sm:block">
                     {formatRelative(p.createdAt)}
@@ -473,10 +501,18 @@ export default function AdminDashboardPage() {
                           </div>
                           <div>
                             <span className="text-white font-medium whitespace-nowrap">{member.name}</span>
+                            {member.isChild && (
+                              <span className="ml-2 text-[9px] font-black tracking-widest text-sky-400 border border-sky-700/60 bg-sky-950/50 px-1.5 py-0.5 rounded">
+                                {t('adm_junior_badge')}
+                              </span>
+                            )}
                             {member.isLocked && (
                               <span className="ml-2 text-[9px] font-black tracking-widest text-red-400 border border-red-700/60 bg-red-950/50 px-1.5 py-0.5 rounded">
                                 {t('lock_badge')}
                               </span>
+                            )}
+                            {member.parentName && (
+                              <p className="text-zinc-600 text-[10px] mt-0.5">{t('pend_parent_label')}: {member.parentName}</p>
                             )}
                           </div>
                         </div>
@@ -490,17 +526,21 @@ export default function AdminDashboardPage() {
 
                       {/* Role */}
                       <td className="px-4 py-3">
-                        <select
-                          value={member.role}
-                          onChange={e => changeRole(member, e.target.value)}
-                          className={`bg-zinc-800 border border-zinc-700 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand ${meta.color}`}
-                        >
-                          <option value="MEMBER">{t('adm_role_member')}</option>
-                          <option value="TRAINER">{t('adm_role_trainer')}</option>
-                          <option value="FIGHTER">{t('adm_role_fighter')}</option>
-                          <option value="FINANCE">{t('adm_role_finance')}</option>
-                          <option value="ADMIN">{t('adm_role_admin')}</option>
-                        </select>
+                        {member.isChild ? (
+                          <span className="text-xs text-sky-400">{t('adm_role_junior')}</span>
+                        ) : (
+                          <select
+                            value={member.role}
+                            onChange={e => changeRole(member, e.target.value)}
+                            className={`bg-zinc-800 border border-zinc-700 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand ${meta.color}`}
+                          >
+                            <option value="MEMBER">{t('adm_role_member')}</option>
+                            <option value="TRAINER">{t('adm_role_trainer')}</option>
+                            <option value="FIGHTER">{t('adm_role_fighter')}</option>
+                            <option value="FINANCE">{t('adm_role_finance')}</option>
+                            <option value="ADMIN">{t('adm_role_admin')}</option>
+                          </select>
+                        )}
                       </td>
 
                       {/* Check-ins */}
@@ -620,7 +660,9 @@ export default function AdminDashboardPage() {
 
                       {/* Lock / Unlock */}
                       <td className="px-4 py-3">
-                        {member.isLocked ? (
+                        {member.isChild ? (
+                          <span className="text-zinc-700 text-xs">–</span>
+                        ) : member.isLocked ? (
                           <button
                             onClick={() => unlockAccount(member)}
                             title={member.lockedReason ?? ''}

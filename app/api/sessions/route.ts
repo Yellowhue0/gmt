@@ -3,7 +3,10 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { getTodayString } from '@/lib/utils'
 
-function canSeeSession(visibility: string, role: string | null) {
+function canSeeSession(visibility: string, classType: string, role: string | null) {
+  // KIDS_ONLY classes are only for parents, trainers, and admins
+  if (classType === 'KIDS_ONLY' && !['PARENT', 'TRAINER', 'ADMIN'].includes(role ?? '')) return false
+
   if (visibility === 'PUBLIC') return true
   if (!role) return false
   if (visibility === 'MEMBERS_ONLY') return true
@@ -58,7 +61,7 @@ export async function GET() {
   }
 
   const data = sessions
-    .filter((s) => canSeeSession(s.visibility, role))
+    .filter((s) => canSeeSession(s.visibility, s.classType, role))
     .map((s) => {
       // Merge legacy trainerId trainer + assigned trainers (deduplicated)
       const map = new Map<string, { id: string; name: string }>()
