@@ -12,7 +12,7 @@ type User = {
   email: string
   role: string
   membershipPaid: boolean
-  membershipExpiry: string | null
+  membershipEnd: string | null
   swishNumber: string | null
 }
 
@@ -105,7 +105,7 @@ export default function DashboardPage() {
 
   const isTrainerOrAdmin = user.role === 'ADMIN' || user.role === 'TRAINER'
   const todaySessions = sessions.filter(s => s.isToday)
-  const expiry = user.membershipExpiry ? new Date(user.membershipExpiry) : null
+  const expiry = user.membershipEnd ? new Date(user.membershipEnd) : null
   const isExpiring = expiry && (expiry.getTime() - Date.now()) < 14 * 24 * 60 * 60 * 1000
 
   const accountRows = [

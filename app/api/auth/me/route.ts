@@ -17,7 +17,7 @@ export async function GET() {
       avatarUrl: true,
       usernameChangesCount: true,
       membershipPaid: true,
-      membershipExpiry: true,
+      membershipEnd: true,
       swishNumber: true,
       phone: true,
       createdAt: true,

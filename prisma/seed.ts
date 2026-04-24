@@ -23,7 +23,7 @@ async function main() {
       password: adminPass,
       role: 'ADMIN',
       membershipPaid: true,
-      membershipExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      membershipEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
     },
   })
 
@@ -36,7 +36,7 @@ async function main() {
       password: fmtAdminPass,
       role: 'ADMIN',
       membershipPaid: true,
-      membershipExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      membershipEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
     },
   })
 
@@ -49,7 +49,7 @@ async function main() {
       password: trainerPass,
       role: 'TRAINER',
       membershipPaid: true,
-      membershipExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      membershipEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
     },
   })
 

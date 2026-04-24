@@ -18,7 +18,7 @@ type UserProfile = {
   avatarUrl: string | null
   usernameChangesCount: number
   membershipPaid: boolean
-  membershipExpiry: string | null
+  membershipEnd: string | null
   swishNumber: string | null
   phone: string | null
   createdAt: string
@@ -95,7 +95,7 @@ export default function ProfilePage() {
 
   const changesLeft = MAX_NAME_CHANGES - profile.usernameChangesCount
   const nameReadOnly = changesLeft <= 0
-  const expiry = profile.membershipExpiry ? new Date(profile.membershipExpiry) : null
+  const expiry = profile.membershipEnd ? new Date(profile.membershipEnd) : null
 
   const ROLE_LABEL: Record<string, string> = {
     ADMIN: t('adm_role_admin'),
