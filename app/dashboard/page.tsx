@@ -313,7 +313,7 @@ function SessionCard({
   onCheckIn: () => void
   onConfirmTrainer: () => void
   onUncancel: () => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }) {
   const hasConfirmedTrainers = s.confirmedTrainers.length > 0
 

@@ -481,7 +481,7 @@ function SessionListItem({
   onConfirm: () => void
   onCancel: () => void
   onUncancel: () => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }) {
   const hasTrainer = s.confirmedTrainers.length > 0
 
