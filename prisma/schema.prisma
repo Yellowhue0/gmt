@@ -15,12 +15,18 @@ enum Role {
   ADMIN
 }
 
+enum ClassType {
+  REGULAR
+  SPECIAL
+  FIGHTERS_ONLY
+}
+
 model User {
-  id               String    @id @default(cuid())
-  name             String
-  email            String    @unique
-  password         String
-  role             Role      @default(MEMBER)
+  id                   String    @id @default(cuid())
+  name                 String
+  email                String    @unique
+  password             String
+  role                 Role      @default(MEMBER)
   swishNumber          String?
   phone                String?
   bio                  String?
@@ -28,20 +34,21 @@ model User {
   usernameChangesCount Int       @default(0)
   membershipPaid       Boolean   @default(false)
   membershipStart      DateTime?
-  membershipEnd        DateTime? @map("membershipExpiry")
+  membershipExpiry     DateTime?
   resetToken           String?
   resetTokenExpiry     DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  checkIns           CheckIn[]
-  posts              Post[]
-  comments           Comment[]
-  sessions           GymSession[]             @relation("TrainerSessions")
-  notifications      Notification[]
-  eventAttendees     EventAttendee[]
-  createdEvents      Event[]                  @relation("EventCreator")
-  confirmedSessions  SessionConfirmedTrainer[]
+  checkIns          CheckIn[]
+  posts             Post[]
+  comments          Comment[]
+  sessions          GymSession[]             @relation("TrainerSessions")
+  notifications     Notification[]
+  eventAttendees    EventAttendee[]
+  createdEvents     Event[]                  @relation("EventCreator")
+  confirmedSessions SessionConfirmedTrainer[]
+  assignedSessions  SessionAssignedTrainer[]
 }
 
 model GymSession {
@@ -52,10 +59,15 @@ model GymSession {
   startTime          String
   endTime            String
   type               String    @default("regular")
+  classType          ClassType @default(REGULAR)
+  visibility         String    @default("PUBLIC")
   trainerId          String?
   trainer            User?     @relation("TrainerSessions", fields: [trainerId], references: [id])
   maxCapacity        Int       @default(20)
   isActive           Boolean   @default(true)
+  isRecurring        Boolean   @default(true)
+  specificDate       DateTime?
+  seriesId           String?
   isCancelled        Boolean   @default(false)
   cancellationReason String?
   cancelledAt        DateTime?
@@ -64,6 +76,18 @@ model GymSession {
 
   checkIns          CheckIn[]
   confirmedTrainers SessionConfirmedTrainer[]
+  assignedTrainers  SessionAssignedTrainer[]
+}
+
+model SessionAssignedTrainer {
+  sessionId  String
+  userId     String
+  assignedBy String?
+  assignedAt DateTime   @default(now())
+  session    GymSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, userId])
 }
 
 model SessionConfirmedTrainer {

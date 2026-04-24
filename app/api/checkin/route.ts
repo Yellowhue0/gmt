@@ -15,15 +15,25 @@ export async function POST(request: Request) {
   }
 
   const session = await prisma.gymSession.findUnique({ where: { id: sessionId } })
-  if (!session || !session.isActive) {
+  if (!session || !session.isActive || session.isCancelled) {
     return NextResponse.json({ error: 'Sessionen hittades inte' }, { status: 404 })
   }
 
   const today = getTodayString()
   const todayDow = new Date().getDay()
 
-  if (session.dayOfWeek !== todayDow) {
-    return NextResponse.json({ error: 'Denna klass är inte idag' }, { status: 400 })
+  if (session.isRecurring) {
+    if (session.dayOfWeek !== todayDow) {
+      return NextResponse.json({ error: 'Denna klass är inte idag' }, { status: 400 })
+    }
+  } else {
+    if (!session.specificDate) {
+      return NextResponse.json({ error: 'Ogiltigt pass' }, { status: 400 })
+    }
+    const sessionDate = session.specificDate.toISOString().split('T')[0]
+    if (sessionDate !== today) {
+      return NextResponse.json({ error: 'Denna klass är inte idag' }, { status: 400 })
+    }
   }
 
   const existing = await prisma.checkIn.findUnique({
