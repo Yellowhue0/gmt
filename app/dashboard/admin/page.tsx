@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, XCircle, Search, Trash2, Users, ShieldCheck, Sword, Wallet, AlertTriangle, Clock, Shield } from 'lucide-react'
+import {
+  CheckCircle2, XCircle, Search, Trash2, Users, ShieldCheck, Sword, Wallet,
+  AlertTriangle, Clock, Shield, Lock, Unlock, UserCheck, UserX, X,
+} from 'lucide-react'
 import { formatDate, formatRelative } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
@@ -24,6 +27,18 @@ const ACTION_STYLES: Record<string, string> = {
   MEMBERSHIP_UPDATED:  'bg-purple-900/40 text-purple-400 border-purple-800/50',
   PAYMENT_MARKED:      'bg-brand/20 text-brand border-brand/30',
   PROFILE_UPDATED:     'bg-yellow-900/30 text-yellow-400 border-yellow-800/40',
+  ACCOUNT_DELETED:     'bg-red-900/40 text-red-400 border-red-800/50',
+  MEMBER_CONFIRMED:    'bg-green-900/40 text-green-400 border-green-800/50',
+  MEMBER_REJECTED:     'bg-orange-900/40 text-orange-400 border-orange-800/50',
+  ACCOUNT_LOCKED:      'bg-red-900/40 text-red-400 border-red-800/50',
+  ACCOUNT_UNLOCKED:    'bg-teal-900/40 text-teal-400 border-teal-800/50',
+}
+
+type PendingMember = {
+  id: string
+  name: string
+  email: string
+  createdAt: string
 }
 
 type Member = {
@@ -36,6 +51,9 @@ type Member = {
   membershipPaid: boolean
   membershipStart: string | null
   membershipEnd: string | null
+  isConfirmed: boolean
+  isLocked: boolean
+  lockedReason: string | null
   createdAt: string
   _count: { checkIns: number }
 }
@@ -65,6 +83,7 @@ function getMembershipStatus(end: string | null): { type: 'expired' | 'active' |
 
 export default function AdminDashboardPage() {
   const [members, setMembers] = useState<Member[]>([])
+  const [pending, setPending] = useState<PendingMember[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [payFilter, setPayFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
@@ -76,6 +95,15 @@ export default function AdminDashboardPage() {
   const [timeline, setTimeline] = useState<Record<string, AuditEntry[]>>({})
   const [timelineOpen, setTimelineOpen] = useState<string | null>(null)
   const [timelineLoading, setTimelineLoading] = useState<string | null>(null)
+  // Pending confirmation state
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<PendingMember | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejecting, setRejecting] = useState(false)
+  // Lock modal state
+  const [lockTarget, setLockTarget] = useState<Member | null>(null)
+  const [lockReason, setLockReason] = useState('')
+  const [locking, setLocking] = useState(false)
   const { t } = useLanguage()
 
   const getActionLabel = (a: string): string => {
@@ -97,10 +125,42 @@ export default function AdminDashboardPage() {
   }
 
   useEffect(() => {
-    fetch('/api/admin/members')
-      .then(r => r.json())
-      .then(d => { setMembers(d.data ?? []); setLoading(false) })
+    Promise.all([
+      fetch('/api/admin/members').then(r => r.json()),
+      fetch('/api/members/pending').then(r => r.json()),
+    ]).then(([m, p]) => {
+      setMembers(m.data ?? [])
+      setPending(p.data ?? [])
+      setLoading(false)
+    })
   }, [])
+
+  const confirmMember = async (member: PendingMember) => {
+    setConfirmingId(member.id)
+    const res = await fetch(`/api/members/${member.id}/confirm`, { method: 'POST' })
+    if (res.ok) {
+      setPending(prev => prev.filter(p => p.id !== member.id))
+      setMembers(prev => prev.map(m => m.id === member.id ? { ...m, isConfirmed: true } : m))
+    }
+    setConfirmingId(null)
+  }
+
+  const rejectMember = async () => {
+    if (!rejectTarget) return
+    setRejecting(true)
+    const res = await fetch(`/api/members/${rejectTarget.id}/confirm`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: rejectReason || null }),
+    })
+    if (res.ok) {
+      setPending(prev => prev.filter(p => p.id !== rejectTarget.id))
+      setMembers(prev => prev.filter(m => m.id !== rejectTarget.id))
+    }
+    setRejecting(false)
+    setRejectTarget(null)
+    setRejectReason('')
+  }
 
   const toggleMembership = async (member: Member) => {
     setUpdating(member.id)
@@ -157,7 +217,37 @@ export default function AdminDashboardPage() {
 
   const cancelDateEdit = () => setDateEdit(null)
 
-  const filtered = members.filter(m => {
+  const lockAccount = async () => {
+    if (!lockTarget || !lockReason.trim()) return
+    setLocking(true)
+    const res = await fetch(`/api/admin/members/${lockTarget.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isLocked: true, lockedReason: lockReason }),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      setMembers(prev => prev.map(m => m.id === lockTarget.id ? { ...m, ...data } : m))
+    }
+    setLocking(false)
+    setLockTarget(null)
+    setLockReason('')
+  }
+
+  const unlockAccount = async (member: Member) => {
+    const res = await fetch(`/api/admin/members/${member.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isLocked: false }),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      setMembers(prev => prev.map(m => m.id === member.id ? { ...m, ...data } : m))
+    }
+  }
+
+  const confirmed = members.filter(m => m.isConfirmed)
+  const filtered = confirmed.filter(m => {
     const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
       m.email.toLowerCase().includes(search.toLowerCase())
     const matchPay =
@@ -168,10 +258,10 @@ export default function AdminDashboardPage() {
     return matchSearch && matchPay && matchRole
   })
 
-  const paid = members.filter(m => m.membershipPaid).length
-  const unpaid = members.filter(m => !m.membershipPaid).length
-  const totalCheckIns = members.reduce((s, m) => s + m._count.checkIns, 0)
-  const expired = members.filter(m => getMembershipStatus(m.membershipEnd).type === 'expired').length
+  const paid = confirmed.filter(m => m.membershipPaid).length
+  const unpaid = confirmed.filter(m => !m.membershipPaid).length
+  const totalCheckIns = confirmed.reduce((s, m) => s + m._count.checkIns, 0)
+  const expired = confirmed.filter(m => getMembershipStatus(m.membershipEnd).type === 'expired').length
 
   const getRoleLabel = (role: string) => {
     const map: Record<string, string> = {
@@ -182,7 +272,7 @@ export default function AdminDashboardPage() {
   }
 
   const primaryStats = [
-    { label: t('adm_stat_total'), value: members.length, color: 'text-white' },
+    { label: t('adm_stat_total'), value: confirmed.length, color: 'text-white' },
     { label: t('adm_stat_paid'), value: paid, color: 'text-green-400' },
     { label: t('adm_stat_unpaid'), value: unpaid, color: 'text-yellow-400' },
     { label: t('mem_expired'), value: expired, color: 'text-red-400' },
@@ -191,7 +281,7 @@ export default function AdminDashboardPage() {
 
   const roleStats = ALL_ROLES.map(role => ({
     role, label: getRoleLabel(role),
-    count: members.filter(m => m.role === role).length,
+    count: confirmed.filter(m => m.role === role).length,
     meta: ROLE_META[role],
   }))
 
@@ -225,6 +315,54 @@ export default function AdminDashboardPage() {
           {t('audit_link')}
         </Link>
       </div>
+
+      {/* Pending members */}
+      {!loading && pending.length > 0 && (
+        <div className="mb-8 bg-yellow-950/20 border border-yellow-800/40 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-yellow-800/30">
+            <Clock size={16} className="text-yellow-400" />
+            <span className="text-yellow-300 font-semibold text-sm">{t('pend_title')}</span>
+            <span className="ml-auto bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+              {pending.length}
+            </span>
+          </div>
+          <ul className="divide-y divide-yellow-900/20">
+            {pending.map(p => (
+              <li key={p.id} className="flex items-center justify-between px-5 py-3 gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                    {p.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                    <p className="text-zinc-500 text-xs truncate">{p.email}</p>
+                  </div>
+                  <span className="text-zinc-600 text-xs whitespace-nowrap hidden sm:block">
+                    {formatRelative(p.createdAt)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => confirmMember(p)}
+                    disabled={confirmingId === p.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-900/40 text-green-400 border border-green-800/50 hover:bg-green-900/60 transition-colors disabled:opacity-50"
+                  >
+                    <UserCheck size={12} />
+                    {confirmingId === p.id ? t('pend_confirming') : t('pend_confirm')}
+                  </button>
+                  <button
+                    onClick={() => { setRejectTarget(p); setRejectReason('') }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-900/30 text-red-400 border border-red-800/40 hover:bg-red-900/50 transition-colors"
+                  >
+                    <UserX size={12} />
+                    {t('pend_reject')}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Primary stats */}
       <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-4">
@@ -305,6 +443,9 @@ export default function AdminDashboardPage() {
                       {h}
                     </th>
                   ))}
+                  <th className="px-4 py-3 text-xs text-zinc-500 uppercase tracking-wider font-medium whitespace-nowrap">
+                    {t('lock_btn')}
+                  </th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -318,14 +459,26 @@ export default function AdminDashboardPage() {
 
                   return (
                     <>
-                    <tr key={member.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors">
+                    <tr
+                      key={member.id}
+                      className={`border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors ${
+                        member.isLocked ? 'bg-red-950/10' : ''
+                      }`}
+                    >
                       {/* Name */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold shrink-0">
                             {member.name.charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-white font-medium whitespace-nowrap">{member.name}</span>
+                          <div>
+                            <span className="text-white font-medium whitespace-nowrap">{member.name}</span>
+                            {member.isLocked && (
+                              <span className="ml-2 text-[9px] font-black tracking-widest text-red-400 border border-red-700/60 bg-red-950/50 px-1.5 py-0.5 rounded">
+                                {t('lock_badge')}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -386,7 +539,7 @@ export default function AdminDashboardPage() {
                             onClick={() => startDateEdit(member.id, 'start', member.membershipStart)}
                             className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors text-left"
                           >
-                            {member.membershipStart ? formatDate(member.membershipStart) : <span className="text-zinc-700">– kl</span>}
+                            {member.membershipStart ? formatDate(member.membershipStart) : <span className="text-zinc-700">–</span>}
                           </button>
                         )}
                       </td>
@@ -450,18 +603,6 @@ export default function AdminDashboardPage() {
                         </button>
                       </td>
 
-                      {/* Delete */}
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => deleteMember(member)}
-                          disabled={deleting === member.id}
-                          className="p-1.5 rounded text-zinc-600 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-                          title={t('adm_delete')}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-
                       {/* History toggle */}
                       <td className="px-4 py-3">
                         <button
@@ -476,12 +617,44 @@ export default function AdminDashboardPage() {
                           <Clock size={14} />
                         </button>
                       </td>
+
+                      {/* Lock / Unlock */}
+                      <td className="px-4 py-3">
+                        {member.isLocked ? (
+                          <button
+                            onClick={() => unlockAccount(member)}
+                            title={member.lockedReason ?? ''}
+                            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium bg-teal-900/30 text-teal-400 border border-teal-800/40 hover:bg-teal-900/50 transition-colors whitespace-nowrap"
+                          >
+                            <Unlock size={11} /> {t('lock_unlock_btn')}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => { setLockTarget(member); setLockReason('') }}
+                            className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700 hover:text-red-400 hover:border-red-800/50 transition-colors whitespace-nowrap"
+                          >
+                            <Lock size={11} /> {t('lock_btn')}
+                          </button>
+                        )}
+                      </td>
+
+                      {/* Delete */}
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => deleteMember(member)}
+                          disabled={deleting === member.id}
+                          className="p-1.5 rounded text-zinc-600 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                          title={t('adm_delete')}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
                     </tr>
 
                     {/* Timeline panel */}
                     {timelineOpen === member.id && (
                       <tr key={`${member.id}-tl`}>
-                        <td colSpan={11} className="px-4 pb-4 bg-zinc-950/50">
+                        <td colSpan={13} className="px-4 pb-4 bg-zinc-950/50">
                           <div className="border border-zinc-800 rounded-lg overflow-hidden">
                             <div className="px-3 py-2 border-b border-zinc-800 flex items-center gap-2">
                               <Clock size={12} className="text-zinc-500" />
@@ -527,6 +700,85 @@ export default function AdminDashboardPage() {
             {filtered.length === 0 && (
               <div className="text-center py-12 text-zinc-600 text-sm">{t('adm_no_match')}</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Reject modal */}
+      {rejectTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <UserX size={18} className="text-red-400" />
+                <h3 className="text-white font-semibold">{t('pend_reject')} – {rejectTarget.name}</h3>
+              </div>
+              <button onClick={() => setRejectTarget(null)} className="text-zinc-600 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <textarea
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder={t('pend_reject_reason')}
+              rows={3}
+              className="w-full bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-red-700 resize-none placeholder-zinc-600"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRejectTarget(null)}
+                className="flex-1 py-2 rounded-lg text-sm text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700 transition-colors"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={rejectMember}
+                disabled={rejecting}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-red-900/60 text-red-300 border border-red-800/60 hover:bg-red-900 hover:text-white transition-colors disabled:opacity-50"
+              >
+                {rejecting ? t('pend_rejecting') : t('pend_reject_confirm_btn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lock modal */}
+      {lockTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Lock size={18} className="text-red-400" />
+                <h3 className="text-white font-semibold">{t('lock_modal_title')} – {lockTarget.name}</h3>
+              </div>
+              <button onClick={() => setLockTarget(null)} className="text-zinc-600 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <label className="block text-xs text-zinc-500 mb-1.5">{t('lock_reason_label')}</label>
+            <textarea
+              value={lockReason}
+              onChange={e => setLockReason(e.target.value)}
+              placeholder={t('lock_reason_placeholder')}
+              rows={3}
+              className="w-full bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-red-700 resize-none placeholder-zinc-600"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setLockTarget(null)}
+                className="flex-1 py-2 rounded-lg text-sm text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700 transition-colors"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={lockAccount}
+                disabled={locking || !lockReason.trim()}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-red-900/60 text-red-300 border border-red-800/60 hover:bg-red-900 hover:text-white transition-colors disabled:opacity-50"
+              >
+                {locking ? t('lock_locking') : t('lock_confirm_btn')}
+              </button>
+            </div>
           </div>
         </div>
       )}

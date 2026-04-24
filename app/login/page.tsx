@@ -30,8 +30,14 @@ export default function LoginPage() {
       return
     }
 
-    const role = data.data?.role
-    window.location.href = role === 'ADMIN' ? '/dashboard/admin' : '/dashboard'
+    const { role, isConfirmed } = data.data ?? {}
+    if (!isConfirmed) {
+      window.location.href = '/dashboard/pending'
+    } else if (role === 'ADMIN') {
+      window.location.href = '/dashboard/admin'
+    } else {
+      window.location.href = '/dashboard'
+    }
   }
 
   return (

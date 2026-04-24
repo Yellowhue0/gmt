@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { logAudit, getIp } from '@/lib/audit'
+import { notify } from '@/lib/notify'
 
 const MEMBER_SELECT = {
   id: true,
@@ -11,6 +12,9 @@ const MEMBER_SELECT = {
   membershipPaid: true,
   membershipStart: true,
   membershipEnd: true,
+  isConfirmed: true,
+  isLocked: true,
+  lockedReason: true,
 }
 
 export async function PATCH(
@@ -82,6 +86,42 @@ export async function PATCH(
     })
   }
 
+  // Lock account
+  if (body.isLocked === true) {
+    const reason = body.lockedReason?.trim() || null
+    data.isLocked = true
+    data.lockedReason = reason
+    data.lockedAt = new Date()
+    data.lockedBy = actor.userId
+    await logAudit({
+      action: 'ACCOUNT_LOCKED',
+      performedBy: actor.userId,
+      targetUser: id,
+      details: reason ? `Låst: ${reason}` : 'Konto låst utan anledning',
+      ipAddress: ip,
+    })
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+    if (target) {
+      await notify(id, 'Konto spärrat', 'Ditt konto har spärrats tillfälligt. Kontakta gymmet.', 'INFO')
+    }
+  }
+
+  // Unlock account
+  if (body.isLocked === false) {
+    data.isLocked = false
+    data.lockedReason = null
+    data.lockedAt = null
+    data.lockedBy = null
+    await logAudit({
+      action: 'ACCOUNT_UNLOCKED',
+      performedBy: actor.userId,
+      targetUser: id,
+      details: 'Konto upplåst',
+      ipAddress: ip,
+    })
+    await notify(id, 'Konto upplåst', 'Ditt konto är nu aktivt igen.', 'INFO')
+  }
+
   const updated = await prisma.user.update({ where: { id }, data, select: MEMBER_SELECT })
   return NextResponse.json({ data: updated })
 }
@@ -100,6 +140,7 @@ export async function DELETE(
   await prisma.checkIn.deleteMany({ where: { userId: id } })
   await prisma.comment.deleteMany({ where: { authorId: id } })
   await prisma.post.deleteMany({ where: { authorId: id } })
+  await prisma.notification.deleteMany({ where: { userId: id } })
   await prisma.user.delete({ where: { id } })
   await logAudit({
     action: 'ACCOUNT_DELETED',

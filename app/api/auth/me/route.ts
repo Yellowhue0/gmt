@@ -21,8 +21,18 @@ export async function GET() {
       swishNumber: true,
       phone: true,
       createdAt: true,
+      isConfirmed: true,
+      isLocked: true,
+      lockedReason: true,
     },
   })
+
+  if (!dbUser) return NextResponse.json({ data: null })
+
+  // Real-time lock check — locked accounts are rejected even with valid tokens
+  if (dbUser.isLocked) {
+    return NextResponse.json({ error: 'locked', data: null }, { status: 403 })
+  }
 
   return NextResponse.json({ data: dbUser })
 }

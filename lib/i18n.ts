@@ -336,6 +336,31 @@ const translations = {
     action_MEMBERSHIP_UPDATED: 'Datum uppdaterat',
     action_PAYMENT_MARKED: 'Betalning markerad',
     action_PROFILE_UPDATED: 'Profil uppdaterad',
+    action_MEMBER_CONFIRMED: 'Konto bekräftat',
+    action_MEMBER_REJECTED: 'Konto nekat',
+    action_ACCOUNT_LOCKED: 'Konto låst',
+    action_ACCOUNT_UNLOCKED: 'Konto upplåst',
+
+    // Pending members
+    pend_title: 'Väntande Medlemmar',
+    pend_empty: 'Inga väntande medlemmar',
+    pend_confirm: 'Bekräfta',
+    pend_reject: 'Neka',
+    pend_confirming: 'Bekräftar...',
+    pend_rejecting: 'Nekar...',
+    pend_reject_reason: 'Anledning (valfritt)...',
+    pend_reject_confirm_btn: 'Neka konto',
+    pend_badge: 'Väntande',
+
+    // Account locking
+    lock_btn: 'Spärra konto',
+    lock_unlock_btn: 'Lås upp',
+    lock_modal_title: 'Spärra konto',
+    lock_reason_label: 'Anledning *',
+    lock_reason_placeholder: 'Ange anledning...',
+    lock_confirm_btn: 'Spärra',
+    lock_locking: 'Spärrar...',
+    lock_badge: 'SPÄRRAD',
 
     // Footer
     foot_about: 'Thaiboxning i Falkenberg för alla nivåer. Nybörjare, motionärer och tävlande välkomna.',
@@ -752,6 +777,31 @@ const translations = {
     action_MEMBERSHIP_UPDATED: 'Dates updated',
     action_PAYMENT_MARKED: 'Payment marked',
     action_PROFILE_UPDATED: 'Profile updated',
+    action_MEMBER_CONFIRMED: 'Account confirmed',
+    action_MEMBER_REJECTED: 'Account rejected',
+    action_ACCOUNT_LOCKED: 'Account locked',
+    action_ACCOUNT_UNLOCKED: 'Account unlocked',
+
+    // Pending members
+    pend_title: 'Pending Members',
+    pend_empty: 'No pending members',
+    pend_confirm: 'Confirm',
+    pend_reject: 'Reject',
+    pend_confirming: 'Confirming...',
+    pend_rejecting: 'Rejecting...',
+    pend_reject_reason: 'Reason (optional)...',
+    pend_reject_confirm_btn: 'Reject account',
+    pend_badge: 'Pending',
+
+    // Account locking
+    lock_btn: 'Lock account',
+    lock_unlock_btn: 'Unlock',
+    lock_modal_title: 'Lock account',
+    lock_reason_label: 'Reason *',
+    lock_reason_placeholder: 'Enter reason...',
+    lock_confirm_btn: 'Lock',
+    lock_locking: 'Locking...',
+    lock_badge: 'LOCKED',
 
     // Footer
     foot_about: 'Muay Thai in Falkenberg for all levels. Beginners, recreational fighters and competitors welcome.',

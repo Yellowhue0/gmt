@@ -17,6 +17,23 @@ export async function proxy(request: NextRequest) {
   try {
     const { payload } = await jwtVerify(token, secret)
 
+    // Locked accounts: clear cookie and send to login
+    if (payload.isLocked) {
+      const res = NextResponse.redirect(new URL('/login', request.url))
+      res.cookies.set('gmt-token', '', { maxAge: 0, path: '/' })
+      return res
+    }
+
+    // Unconfirmed accounts: only the pending page is allowed
+    if (!payload.isConfirmed && pathname !== '/dashboard/pending') {
+      return NextResponse.redirect(new URL('/dashboard/pending', request.url))
+    }
+
+    // Confirmed accounts should not linger on the pending page
+    if (payload.isConfirmed && pathname === '/dashboard/pending') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
     if (pathname.startsWith('/dashboard/admin') && payload.role !== 'ADMIN') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
@@ -36,5 +53,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/community', '/events', '/schema'],
 }

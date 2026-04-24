@@ -3,6 +3,7 @@ import { hash } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { signToken } from '@/lib/auth'
 import { logAudit, getIp } from '@/lib/audit'
+import { notifyMany } from '@/lib/notify'
 
 export async function POST(request: Request) {
   const { name, email, password, swishNumber, phone } = await request.json()
@@ -21,7 +22,14 @@ export async function POST(request: Request) {
 
   const hashed = await hash(password, 12)
   const user = await prisma.user.create({
-    data: { name, email, password: hashed, swishNumber: swishNumber || null, phone: phone || null },
+    data: {
+      name,
+      email,
+      password: hashed,
+      swishNumber: swishNumber || null,
+      phone: phone || null,
+      isConfirmed: false,
+    },
   })
 
   await logAudit({
@@ -32,15 +40,31 @@ export async function POST(request: Request) {
     ipAddress: getIp(request),
   })
 
+  // Notify all admins and trainers about new pending member
+  const staff = await prisma.user.findMany({
+    where: { role: { in: ['ADMIN', 'TRAINER'] } },
+    select: { id: true },
+  })
+  if (staff.length > 0) {
+    await notifyMany(
+      staff.map(s => s.id),
+      'Ny väntande medlem',
+      `${user.name} har registrerat sig och väntar på bekräftelse.`,
+      'INFO',
+    )
+  }
+
   const token = await signToken({
     userId: user.id,
     role: user.role as 'MEMBER' | 'TRAINER' | 'ADMIN',
     name: user.name,
     email: user.email,
+    isConfirmed: false,
+    isLocked: false,
   })
 
   const response = NextResponse.json(
-    { data: { id: user.id, name: user.name, email: user.email, role: user.role } },
+    { data: { id: user.id, name: user.name, email: user.email, role: user.role, isConfirmed: false } },
     { status: 201 }
   )
   response.cookies.set('gmt-token', token, {

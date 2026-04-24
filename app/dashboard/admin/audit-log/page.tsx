@@ -24,19 +24,24 @@ type AuditEntry = {
 type Meta = { total: number; page: number; pages: number; pageSize: number }
 
 const ACTION_STYLES: Record<string, { badge: string; dot: string }> = {
-  LOGIN:               { badge: 'bg-zinc-800 text-zinc-300 border-zinc-700',          dot: 'bg-zinc-500'   },
-  ACCOUNT_CREATED:     { badge: 'bg-green-900/40 text-green-400 border-green-800/50', dot: 'bg-green-500'  },
-  ACCOUNT_DELETED:     { badge: 'bg-red-900/50 text-red-300 border-red-700/50',       dot: 'bg-red-400'    },
-  PASSWORD_RESET:      { badge: 'bg-red-900/40 text-red-400 border-red-800/50',       dot: 'bg-red-500'    },
-  ROLE_CHANGED:        { badge: 'bg-blue-900/40 text-blue-400 border-blue-800/50',    dot: 'bg-blue-500'   },
+  LOGIN:               { badge: 'bg-zinc-800 text-zinc-300 border-zinc-700',          dot: 'bg-zinc-500'    },
+  ACCOUNT_CREATED:     { badge: 'bg-green-900/40 text-green-400 border-green-800/50', dot: 'bg-green-500'   },
+  ACCOUNT_DELETED:     { badge: 'bg-red-900/50 text-red-300 border-red-700/50',       dot: 'bg-red-400'     },
+  PASSWORD_RESET:      { badge: 'bg-red-900/40 text-red-400 border-red-800/50',       dot: 'bg-red-500'     },
+  ROLE_CHANGED:        { badge: 'bg-blue-900/40 text-blue-400 border-blue-800/50',    dot: 'bg-blue-500'    },
   MEMBERSHIP_UPDATED:  { badge: 'bg-purple-900/40 text-purple-400 border-purple-800/50', dot: 'bg-purple-500' },
-  PAYMENT_MARKED:      { badge: 'bg-brand/20 text-brand border-brand/30',             dot: 'bg-brand'      },
+  PAYMENT_MARKED:      { badge: 'bg-brand/20 text-brand border-brand/30',             dot: 'bg-brand'       },
   PROFILE_UPDATED:     { badge: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/40', dot: 'bg-yellow-500' },
+  MEMBER_CONFIRMED:    { badge: 'bg-green-900/40 text-green-400 border-green-800/50', dot: 'bg-green-500'   },
+  MEMBER_REJECTED:     { badge: 'bg-orange-900/40 text-orange-400 border-orange-800/50', dot: 'bg-orange-500' },
+  ACCOUNT_LOCKED:      { badge: 'bg-red-900/40 text-red-400 border-red-800/50',       dot: 'bg-red-500'     },
+  ACCOUNT_UNLOCKED:    { badge: 'bg-teal-900/40 text-teal-400 border-teal-800/50',    dot: 'bg-teal-500'    },
 }
 
 const ALL_ACTIONS = [
   'LOGIN', 'ACCOUNT_CREATED', 'ACCOUNT_DELETED', 'PASSWORD_RESET',
   'ROLE_CHANGED', 'MEMBERSHIP_UPDATED', 'PAYMENT_MARKED', 'PROFILE_UPDATED',
+  'MEMBER_CONFIRMED', 'MEMBER_REJECTED', 'ACCOUNT_LOCKED', 'ACCOUNT_UNLOCKED',
 ]
 
 export default function AuditLogPage() {

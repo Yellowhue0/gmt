@@ -37,6 +37,13 @@ model User {
   membershipEnd        DateTime? @map("membershipExpiry")
   resetToken           String?
   resetTokenExpiry     DateTime?
+  isConfirmed          Boolean   @default(false)
+  confirmedAt          DateTime?
+  confirmedBy          String?
+  isLocked             Boolean   @default(false)
+  lockedReason         String?
+  lockedAt             DateTime?
+  lockedBy             String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

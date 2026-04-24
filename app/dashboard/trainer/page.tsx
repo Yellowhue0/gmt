@@ -1,10 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, CheckCircle2, Calendar, ShieldAlert, ShieldCheck, X, AlertTriangle } from 'lucide-react'
-import { getSessionTypeLabel, getTodayString } from '@/lib/utils'
+import { Users, CheckCircle2, Calendar, ShieldAlert, ShieldCheck, X, AlertTriangle, Clock, UserCheck, UserX } from 'lucide-react'
+import { getSessionTypeLabel, getTodayString, formatRelative } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
+
+type PendingMember = {
+  id: string
+  name: string
+  email: string
+  createdAt: string
+}
 
 type ConfirmedTrainer = { user: { id: string; name: string } }
 
@@ -43,6 +50,12 @@ export default function TrainerDashboardPage() {
   const [selectedDate, setSelectedDate] = useState(getTodayString())
   const [loadingCheckIns, setLoadingCheckIns] = useState(false)
   const [loading, setLoading] = useState(true)
+  // Pending members
+  const [pending, setPending] = useState<PendingMember[]>([])
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<PendingMember | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejecting, setRejecting] = useState(false)
   // Cancel modal state
   const [cancelTarget, setCancelTarget] = useState<Session | null>(null)
   const [cancelReason, setCancelReason] = useState('')
@@ -53,12 +66,35 @@ export default function TrainerDashboardPage() {
     Promise.all([
       fetch('/api/sessions').then(r => r.json()),
       fetch('/api/auth/me').then(r => r.json()),
-    ]).then(([s, u]) => {
+      fetch('/api/members/pending').then(r => r.json()),
+    ]).then(([s, u, p]) => {
       setSessions(s.data ?? [])
       setMe(u.data ?? null)
+      setPending(p.data ?? [])
       setLoading(false)
     })
   }, [])
+
+  const confirmMember = async (member: PendingMember) => {
+    setConfirmingId(member.id)
+    const res = await fetch(`/api/members/${member.id}/confirm`, { method: 'POST' })
+    if (res.ok) setPending(prev => prev.filter(p => p.id !== member.id))
+    setConfirmingId(null)
+  }
+
+  const rejectMember = async () => {
+    if (!rejectTarget) return
+    setRejecting(true)
+    const res = await fetch(`/api/members/${rejectTarget.id}/confirm`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: rejectReason || null }),
+    })
+    if (res.ok) setPending(prev => prev.filter(p => p.id !== rejectTarget.id))
+    setRejecting(false)
+    setRejectTarget(null)
+    setRejectReason('')
+  }
 
   const loadCheckIns = async (session: Session, date: string) => {
     setSelectedSession(session)
@@ -127,6 +163,54 @@ export default function TrainerDashboardPage() {
         </h1>
         <p className="text-zinc-500">{t('tr_sub')}</p>
       </div>
+
+      {/* Pending members */}
+      {pending.length > 0 && (
+        <div className="mb-6 bg-yellow-950/20 border border-yellow-800/40 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-yellow-800/30">
+            <Clock size={16} className="text-yellow-400" />
+            <span className="text-yellow-300 font-semibold text-sm">{t('pend_title')}</span>
+            <span className="ml-auto bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+              {pending.length}
+            </span>
+          </div>
+          <ul className="divide-y divide-yellow-900/20">
+            {pending.map(p => (
+              <li key={p.id} className="flex items-center justify-between px-5 py-3 gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                    {p.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                    <p className="text-zinc-500 text-xs truncate">{p.email}</p>
+                  </div>
+                  <span className="text-zinc-600 text-xs whitespace-nowrap hidden sm:block">
+                    {formatRelative(p.createdAt)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => confirmMember(p)}
+                    disabled={confirmingId === p.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-900/40 text-green-400 border border-green-800/50 hover:bg-green-900/60 transition-colors disabled:opacity-50"
+                  >
+                    <UserCheck size={12} />
+                    {confirmingId === p.id ? t('pend_confirming') : t('pend_confirm')}
+                  </button>
+                  <button
+                    onClick={() => { setRejectTarget(p); setRejectReason('') }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-900/30 text-red-400 border border-red-800/40 hover:bg-red-900/50 transition-colors"
+                  >
+                    <UserX size={12} />
+                    {t('pend_reject')}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Session list */}
@@ -290,6 +374,45 @@ export default function TrainerDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Reject member modal */}
+      {rejectTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <UserX size={18} className="text-red-400" />
+                <h3 className="text-white font-semibold">{t('pend_reject')} – {rejectTarget.name}</h3>
+              </div>
+              <button onClick={() => setRejectTarget(null)} className="text-zinc-600 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <textarea
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder={t('pend_reject_reason')}
+              rows={3}
+              className="w-full bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-red-700 resize-none placeholder-zinc-600"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRejectTarget(null)}
+                className="flex-1 py-2 rounded-lg text-sm text-zinc-400 border border-zinc-800 hover:text-white hover:border-zinc-700 transition-colors"
+              >
+                {t('ev_cancel')}
+              </button>
+              <button
+                onClick={rejectMember}
+                disabled={rejecting}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-red-900/60 text-red-300 border border-red-800/60 hover:bg-red-900 hover:text-white transition-colors disabled:opacity-50"
+              >
+                {rejecting ? t('pend_rejecting') : t('pend_reject_confirm_btn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cancel modal */}
       {cancelTarget && (

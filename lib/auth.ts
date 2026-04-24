@@ -10,6 +10,8 @@ export type UserPayload = {
   role: 'MEMBER' | 'TRAINER' | 'FIGHTER' | 'FINANCE' | 'ADMIN'
   name: string
   email: string
+  isConfirmed?: boolean
+  isLocked?: boolean
 }
 
 export async function signToken(payload: UserPayload): Promise<string> {

@@ -9,6 +9,10 @@ export type AuditAction =
   | 'PAYMENT_MARKED'
   | 'PROFILE_UPDATED'
   | 'ACCOUNT_DELETED'
+  | 'MEMBER_CONFIRMED'
+  | 'MEMBER_REJECTED'
+  | 'ACCOUNT_LOCKED'
+  | 'ACCOUNT_UNLOCKED'
 
 interface LogOptions {
   action: AuditAction

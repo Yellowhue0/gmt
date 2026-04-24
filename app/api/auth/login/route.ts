@@ -22,6 +22,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Fel e-post eller lösenord' }, { status: 401 })
     }
 
+    if (user.isLocked) {
+      return NextResponse.json(
+        { error: 'Ditt konto har spärrats tillfälligt. Kontakta gymmet.' },
+        { status: 403 }
+      )
+    }
+
     await logAudit({
       action: 'LOGIN',
       performedBy: user.id,
@@ -34,10 +41,18 @@ export async function POST(request: Request) {
       role: user.role as 'MEMBER' | 'TRAINER' | 'FIGHTER' | 'FINANCE' | 'ADMIN',
       name: user.name,
       email: user.email,
+      isConfirmed: user.isConfirmed,
+      isLocked: false,
     })
 
     const response = NextResponse.json({
-      data: { id: user.id, name: user.name, email: user.email, role: user.role },
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isConfirmed: user.isConfirmed,
+      },
     })
     response.cookies.set('gmt-token', token, {
       httpOnly: true,
