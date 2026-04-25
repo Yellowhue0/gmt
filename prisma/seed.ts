@@ -330,6 +330,57 @@ async function main() {
   }
 
   console.log('Posts created')
+
+  // Badges
+  const BADGES = [
+    { name: 'First Class',      description: 'Attend your first session',             icon: '🥋', category: 'ATTENDANCE', isSecret: false },
+    { name: 'On Fire',          description: 'Attend 5 classes in one month',          icon: '🔥', category: 'ATTENDANCE', isSecret: false },
+    { name: 'Dedicated',        description: 'Attend 10 classes in one month',         icon: '💪', category: 'ATTENDANCE', isSecret: false },
+    { name: 'Unstoppable',      description: 'Attend 20 classes in one month',         icon: '⚡', category: 'ATTENDANCE', isSecret: false },
+    { name: 'Consistent',       description: '4 week attendance streak',               icon: '📅', category: 'ATTENDANCE', isSecret: false },
+    { name: 'Committed',        description: '8 week attendance streak',               icon: '🏃', category: 'ATTENDANCE', isSecret: false },
+    { name: 'Legend',           description: '12 week attendance streak',              icon: '👑', category: 'ATTENDANCE', isSecret: false },
+    { name: 'Century',          description: '100 total check-ins',                    icon: '🎯', category: 'ATTENDANCE', isSecret: false },
+    { name: 'Elite',            description: '500 total check-ins',                    icon: '💯', category: 'ATTENDANCE', isSecret: false },
+    { name: 'New Member',       description: 'Welcome to the gym!',                    icon: '🌟', category: 'MILESTONE',  isSecret: false },
+    { name: 'Fighter',          description: 'Earn the Fighter role',                  icon: '🥊', category: 'MILESTONE',  isSecret: false },
+    { name: 'Trainer',          description: 'Earn the Trainer role',                  icon: '🏆', category: 'MILESTONE',  isSecret: false },
+    { name: 'Anniversary',      description: '1 year as a gym member',                 icon: '🎂', category: 'MILESTONE',  isSecret: false },
+    { name: 'Veteran',          description: '3 years as a gym member',                icon: '🎖️', category: 'MILESTONE',  isSecret: false },
+    { name: 'Competitor',       description: 'Enter your first competition',           icon: '⚔️', category: 'FIGHTING',   isSecret: false },
+    { name: 'Victor',           description: 'Win your first fight',                   icon: '🏅', category: 'FIGHTING',   isSecret: false },
+    { name: 'Warrior',          description: 'Compete in 5 fights',                    icon: '💥', category: 'FIGHTING',   isSecret: false },
+    { name: 'Champion',         description: 'Win 10 fights',                          icon: '🔱', category: 'FIGHTING',   isSecret: false },
+    { name: 'Night Owl',        description: 'Check in after 8pm',                     icon: '🌙', category: 'SPECIAL',    isSecret: true },
+    { name: 'Early Bird',       description: 'Check in before 7am',                    icon: '🌅', category: 'SPECIAL',    isSecret: true },
+    { name: 'Holiday Warrior',  description: 'Attend class on a public holiday',       icon: '🎄', category: 'SPECIAL',    isSecret: true },
+    { name: 'Iron Will',        description: 'Train on the same day as a competition', icon: '👊', category: 'SPECIAL',    isSecret: true },
+  ]
+
+  for (const badge of BADGES) {
+    await prisma.badge.upsert({
+      where: { name: badge.name },
+      update: { description: badge.description, icon: badge.icon, category: badge.category, isSecret: badge.isSecret },
+      create: badge,
+    })
+  }
+  console.log('Badges created/updated')
+
+  // Initial season
+  const existingSeason = await prisma.season.findFirst({ where: { isActive: true } })
+  if (!existingSeason) {
+    const year = new Date().getFullYear()
+    await prisma.season.create({
+      data: {
+        name: `${year} Season`,
+        startDate: new Date(`${year}-01-01`),
+        endDate: new Date(`${year}-12-31`),
+        isActive: true,
+      },
+    })
+    console.log(`Created ${year} Season`)
+  }
+
   console.log('\n✅ Seed complete!')
   console.log('\nTest accounts:')
   console.log('  Admin:   admin@gmt.se / admin123!')

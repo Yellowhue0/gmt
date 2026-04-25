@@ -17,6 +17,11 @@ export type AuditAction =
   | 'COMPETITION_ENTRY_ADDED'
   | 'COMPETITION_ENTRY_UPDATED'
   | 'COMPETITION_ENTRY_REMOVED'
+  | 'POINTS_AWARDED'
+  | 'BADGE_AWARDED'
+  | 'BADGE_REMOVED'
+  | 'SEASON_CREATED'
+  | 'SEASON_ENDED'
 
 interface LogOptions {
   action: AuditAction

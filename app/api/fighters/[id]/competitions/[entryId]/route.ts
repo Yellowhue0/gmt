@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
+import { awardFightPoints } from '@/lib/points'
+import { checkAndAwardBadges } from '@/lib/badges'
 
 export async function PATCH(
   req: Request,
@@ -16,6 +18,12 @@ export async function PATCH(
 
   const body = await req.json()
   const { opponent, result, notes, weightAtEntry } = body
+
+  // Get previous entry to detect result change
+  const prevEntry = await prisma.fighterCompetitionEntry.findUnique({
+    where: { id: entryId },
+    select: { result: true, fighterId: true },
+  })
 
   const entry = await prisma.fighterCompetitionEntry.update({
     where: { id: entryId },
@@ -36,6 +44,24 @@ export async function PATCH(
     targetUser: fighterId,
     details: `Competition entry updated for fighter ${fighterId}`,
   })
+
+  // Award result points only when result is first set
+  if (result && !prevEntry?.result && prevEntry?.fighterId) {
+    // Update wins/losses/draws on user
+    const resultUpper = result.toUpperCase()
+    if (resultUpper === 'WIN') {
+      await prisma.user.update({ where: { id: fighterId }, data: { wins: { increment: 1 } } })
+    } else if (resultUpper === 'LOSS') {
+      await prisma.user.update({ where: { id: fighterId }, data: { losses: { increment: 1 } } })
+    } else if (resultUpper === 'DRAW') {
+      await prisma.user.update({ where: { id: fighterId }, data: { draws: { increment: 1 } } })
+    }
+
+    Promise.all([
+      awardFightPoints({ userId: fighterId, result, awardedBy: user.userId }),
+      checkAndAwardBadges({ userId: fighterId, trigger: 'FIGHT_RESULT' }),
+    ]).catch(err => console.error('[fight result points/badges]', err))
+  }
 
   return NextResponse.json({ data: entry })
 }

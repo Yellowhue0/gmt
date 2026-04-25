@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Camera, CheckCircle2, AlertCircle, User, Flame, Trophy, Star, Calendar } from 'lucide-react'
+import { Camera, CheckCircle2, AlertCircle, User, Flame, Trophy, Star, Calendar, Zap } from 'lucide-react'
 import RoleBadge from '@/components/RoleBadge'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
@@ -57,6 +57,30 @@ type HistoryData = {
   weeklyActivity: WeekActivity[]
   availableMonths: string[]
   history: { items: CheckInItem[]; total: number; page: number; pages: number }
+}
+
+type BadgeItem = {
+  id: string
+  name: string
+  description: string
+  icon: string
+  category: string
+  isSecret: boolean
+  earned: boolean
+  earnedAt: string | null
+  userBadgeId: string | null
+}
+
+type AchievementsData = {
+  totalPoints: number
+  currentSeasonPoints: number
+  attendanceStreak: number
+  longestStreak: number
+  totalCheckIns: number
+  badges: BadgeItem[]
+  nextMilestone: number | null
+  prevMilestone: number
+  progressPct: number
 }
 
 // ── Activity bar chart ──────────────────────────────────────────────────────
@@ -146,6 +170,8 @@ export default function ProfilePage() {
   const [histLoading, setHistLoading] = useState(true)
   const [histPage, setHistPage] = useState(1)
   const [monthFilter, setMonthFilter] = useState<string>('')
+  const [achievements, setAchievements] = useState<AchievementsData | null>(null)
+  const [badgeTooltip, setBadgeTooltip] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -169,6 +195,13 @@ export default function ProfilePage() {
   }, [])
 
   useEffect(() => { loadStats(1, '') }, [loadStats])
+
+  useEffect(() => {
+    fetch('/api/profile/achievements')
+      .then(r => r.json())
+      .then(d => { if (d.data) setAchievements(d.data) })
+      .catch(() => {})
+  }, [])
 
   const applyFilter = (month: string) => {
     setMonthFilter(month)
@@ -541,6 +574,108 @@ export default function ProfilePage() {
           <p className="text-zinc-600 text-sm">{t('prof_stats_none')}</p>
         )}
       </div>
+
+      {/* ── Points & Achievements ──────────────────────────────────── */}
+      {achievements && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-5">
+          <h2 className="text-xs text-zinc-500 uppercase tracking-wider mb-5">Points & Achievements</h2>
+
+          {/* Points summary */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="rounded-xl border border-brand/40 bg-brand/5 p-3 text-center">
+              <div className="flex items-center justify-center gap-1 text-zinc-500 mb-1">
+                <Trophy size={12} />
+                <span className="text-[10px] uppercase tracking-wider">Total Points</span>
+              </div>
+              <div className="text-2xl font-bold text-brand">{achievements.totalPoints.toLocaleString()}</div>
+            </div>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-center">
+              <div className="flex items-center justify-center gap-1 text-zinc-500 mb-1">
+                <Star size={12} />
+                <span className="text-[10px] uppercase tracking-wider">This Season</span>
+              </div>
+              <div className="text-2xl font-bold text-white">{achievements.currentSeasonPoints.toLocaleString()}</div>
+            </div>
+            <div className={`rounded-xl border p-3 text-center ${achievements.attendanceStreak > 0 ? 'border-orange-500/40 bg-orange-500/5' : 'border-zinc-800 bg-zinc-900'}`}>
+              <div className="flex items-center justify-center gap-1 text-zinc-500 mb-1">
+                <Flame size={12} className={achievements.attendanceStreak > 0 ? 'text-orange-400' : ''} />
+                <span className="text-[10px] uppercase tracking-wider">Streak</span>
+              </div>
+              <div className={`text-2xl font-bold ${achievements.attendanceStreak > 0 ? 'text-orange-400' : 'text-white'}`}>
+                {achievements.attendanceStreak}
+                <span className="text-sm font-normal text-zinc-500 ml-1">wks</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress bar to next milestone */}
+          {achievements.nextMilestone && (
+            <div className="mb-6">
+              <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
+                <span>{achievements.totalCheckIns} / {achievements.nextMilestone} check-ins</span>
+                <span>{achievements.nextMilestone - achievements.totalCheckIns} to go</span>
+              </div>
+              <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand rounded-full transition-all duration-500"
+                  style={{ width: `${achievements.progressPct}%` }}
+                />
+              </div>
+              <p className="text-zinc-600 text-xs mt-1">
+                {achievements.nextMilestone - achievements.totalCheckIns} check-ins until next milestone badge
+              </p>
+            </div>
+          )}
+
+          {/* Badge grid */}
+          <div>
+            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Badge Collection</p>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              {achievements.badges.map(badge => {
+                const showAsSecret = badge.isSecret && !badge.earned
+                const key = badge.id
+                return (
+                  <div
+                    key={key}
+                    className={`relative flex flex-col items-center gap-1 p-2 rounded-lg border cursor-default transition-all group ${
+                      badge.earned
+                        ? 'border-zinc-700 bg-zinc-800/60 hover:border-zinc-600'
+                        : 'border-zinc-800/60 bg-zinc-900/30 opacity-40'
+                    }`}
+                    onMouseEnter={() => setBadgeTooltip(badge.id)}
+                    onMouseLeave={() => setBadgeTooltip(null)}
+                  >
+                    <span className="text-2xl">{showAsSecret ? '❓' : badge.icon}</span>
+                    <span className="text-[9px] text-zinc-500 text-center leading-tight line-clamp-2">
+                      {showAsSecret ? '???' : badge.name}
+                    </span>
+                    {badge.earned && badge.earnedAt && (
+                      <span className="text-[8px] text-zinc-600">{new Date(badge.earnedAt).toLocaleDateString('sv-SE')}</span>
+                    )}
+
+                    {/* Tooltip */}
+                    {badgeTooltip === badge.id && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 bg-zinc-800 border border-zinc-700 rounded-lg p-2.5 z-10 shadow-xl pointer-events-none">
+                        <p className="text-white text-xs font-semibold mb-0.5">
+                          {showAsSecret ? '???' : badge.name}
+                        </p>
+                        <p className="text-zinc-400 text-[10px] leading-relaxed">
+                          {showAsSecret ? 'Keep training to discover this secret badge!' : badge.description}
+                        </p>
+                        {badge.earned && badge.earnedAt && (
+                          <p className="text-zinc-600 text-[9px] mt-1">
+                            Earned {new Date(badge.earnedAt).toLocaleDateString('sv-SE')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Session History ─────────────────────────────────────────── */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">

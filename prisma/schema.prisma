@@ -58,6 +58,11 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
+  totalPoints           Int       @default(0)
+  currentSeasonPoints   Int       @default(0)
+  attendanceStreak      Int       @default(0)
+  longestStreak         Int       @default(0)
+
   checkIns           CheckIn[]
   posts              Post[]
   comments           Comment[]
@@ -70,6 +75,8 @@ model User {
   children           ChildMember[]             @relation("ParentChildren")
   competitionEntries FighterCompetitionEntry[] @relation("FighterEntries")
   eventComments      EventComment[]            @relation("EventCommentAuthor")
+  userBadges         UserBadge[]
+  seasonLeaderboard  SeasonLeaderboard[]
 }
 
 model ChildMember {
@@ -215,6 +222,57 @@ model FighterCompetitionEntry {
   enteredBy     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model Badge {
+  id             String     @id @default(cuid())
+  name           String     @unique
+  description    String
+  icon           String
+  category       String
+  pointsRequired Int?
+  isSecret       Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+
+  userBadges     UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt  DateTime @default(now())
+  awardedBy String?
+  note      String?
+
+  @@unique([userId, badgeId])
+}
+
+model Season {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+  topThree  String?
+  createdAt DateTime @default(now())
+
+  leaderboard SeasonLeaderboard[]
+}
+
+model SeasonLeaderboard {
+  id              String @id @default(cuid())
+  seasonId        String
+  season          Season @relation(fields: [seasonId], references: [id])
+  userId          String
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points          Int    @default(0)
+  attendanceCount Int    @default(0)
+  rank            Int?
+
+  @@unique([seasonId, userId])
 }
 
 model AuditLog {

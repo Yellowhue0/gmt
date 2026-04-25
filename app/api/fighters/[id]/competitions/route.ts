@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import { notify } from '@/lib/notify'
+import { awardPoints } from '@/lib/points'
+import { checkAndAwardBadges } from '@/lib/badges'
 
 export async function POST(
   req: Request,
@@ -62,6 +64,12 @@ export async function POST(
     `Du har anmälts till ${event.title} den ${eventDate} av ${user.name}.`,
     'INFO',
   )
+
+  // Award competition entry points and check badges
+  Promise.all([
+    awardPoints({ userId: fighterId, points: 25, reason: `Competition entry: ${event.title}`, awardedBy: user.userId }),
+    checkAndAwardBadges({ userId: fighterId, trigger: 'COMPETITION_ENTRY' }),
+  ]).catch(err => console.error('[competition entry points/badges]', err))
 
   return NextResponse.json({ data: entry }, { status: 201 })
 }

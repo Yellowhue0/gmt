@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { getTodayString } from '@/lib/utils'
+import { awardCheckInPoints } from '@/lib/points'
+import { checkAndAwardBadges } from '@/lib/badges'
 
 export async function POST(request: Request) {
   const user = await getCurrentUser()
@@ -46,6 +48,22 @@ export async function POST(request: Request) {
   const checkIn = await prisma.checkIn.create({
     data: { userId: user.userId, sessionId, date: today },
   })
+
+  // Fire-and-forget: award points and badges (don't block the response)
+  const now = new Date()
+  Promise.all([
+    awardCheckInPoints({
+      userId: user.userId,
+      sessionClassType: session.classType,
+      sessionType: session.type,
+    }),
+    checkAndAwardBadges({
+      userId: user.userId,
+      trigger: 'CHECKIN',
+      checkInTime: now,
+      today,
+    }),
+  ]).catch(err => console.error('[checkin points/badges]', err))
 
   return NextResponse.json({ data: checkIn }, { status: 201 })
 }

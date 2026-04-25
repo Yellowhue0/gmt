@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { logAudit, getIp } from '@/lib/audit'
 import { notify } from '@/lib/notify'
+import { checkAndAwardBadges } from '@/lib/badges'
 
 const MEMBER_SELECT = {
   id: true,
@@ -123,6 +124,11 @@ export async function PATCH(
   }
 
   const updated = await prisma.user.update({ where: { id }, data, select: MEMBER_SELECT })
+
+  if (body.role && ['FIGHTER', 'TRAINER'].includes(body.role)) {
+    checkAndAwardBadges({ userId: id, trigger: 'ROLE_CHANGE' }).catch(() => {})
+  }
+
   return NextResponse.json({ data: updated })
 }
 

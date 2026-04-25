@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, Users, Trophy, MessageCircle, ChevronRight, Clock } from 'lucide-react'
+import { Calendar, Users, Trophy, MessageCircle, ChevronRight, Clock, Star } from 'lucide-react'
 import { getSessionTypeLabel, formatDate } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { WeekScheduleWidget } from '@/components/WeekScheduleWidget'
@@ -34,6 +34,9 @@ type Event = {
   type: string
 }
 
+type LeaderboardEntry = { rank: number; name: string; points: number; role: string }
+type LeaderboardPreview = { season: { name: string } | null; entries: LeaderboardEntry[] }
+
 const TYPE_COLORS: Record<string, string> = {
   regular: 'bg-zinc-700 text-zinc-300',
   sparring: 'bg-brand/20 text-brand border border-brand/30',
@@ -47,10 +50,23 @@ export default function HomePage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [user, setUser] = useState<{ name: string } | null>(null)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardPreview | null>(null)
   const { lang, t } = useLanguage()
 
   useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(d => d.data && setUser(d.data))
+    fetch('/api/auth/me').then(r => r.json()).then(d => {
+      if (d.data) {
+        setUser(d.data)
+        fetch('/api/leaderboard').then(r => r.json()).then(lb => {
+          if (lb.data) {
+            setLeaderboard({
+              season: lb.data.season,
+              entries: (lb.data.entries ?? []).slice(0, 3),
+            })
+          }
+        }).catch(() => {})
+      }
+    })
     fetch('/api/sessions').then(r => r.json()).then(d => setSessions(d.data ?? []))
     fetch('/api/events').then(r => r.json()).then(d => setEvents((d.data ?? []).slice(0, 3)))
   }, [])
@@ -155,6 +171,42 @@ export default function HomePage() {
             {todaySessions.map(s => (
               <SessionPreview key={s.id} session={s} user={user} />
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Leaderboard preview — logged-in members only */}
+      {user && leaderboard && leaderboard.entries.length > 0 && (
+        <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Trophy size={16} className="text-brand" />
+                <span className="text-white font-semibold text-sm">
+                  {leaderboard.season?.name ?? 'Leaderboard'}
+                </span>
+              </div>
+              <Link href="/leaderboard" className="text-brand hover:text-brand-hover text-xs flex items-center gap-1 transition-colors">
+                View Full Leaderboard <ChevronRight size={12} />
+              </Link>
+            </div>
+            <div className="divide-y divide-zinc-800/60">
+              {leaderboard.entries.map(entry => (
+                <div key={entry.rank} className="flex items-center gap-3 px-5 py-3">
+                  <span className="text-lg w-6 text-center shrink-0">
+                    {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : '🥉'}
+                  </span>
+                  <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold shrink-0">
+                    {entry.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="flex-1 text-white text-sm font-medium">{entry.name}</span>
+                  <div className="flex items-center gap-1 text-brand font-bold text-sm">
+                    <Star size={12} />
+                    {entry.points.toLocaleString()} pts
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { signToken } from '@/lib/auth'
 import { logAudit, getIp } from '@/lib/audit'
 import { notifyMany } from '@/lib/notify'
+import { checkAndAwardBadges } from '@/lib/badges'
 
 export async function POST(request: Request) {
   const body = await request.json()
@@ -62,6 +63,9 @@ export async function POST(request: Request) {
       : `Account created for ${user.email}`,
     ipAddress: getIp(request),
   })
+
+  // Award New Member badge
+  checkAndAwardBadges({ userId: user.id, trigger: 'REGISTRATION' }).catch(() => {})
 
   // Notify all admins and trainers
   const staff = await prisma.user.findMany({

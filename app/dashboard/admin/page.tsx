@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   CheckCircle2, XCircle, Search, Trash2, Users, ShieldCheck, Sword, Wallet,
-  AlertTriangle, Clock, Shield, Lock, Unlock, UserCheck, UserX, X,
+  AlertTriangle, Clock, Shield, Lock, Unlock, UserCheck, UserX, X, Trophy,
 } from 'lucide-react'
 import { formatDate, formatRelative } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -329,13 +329,22 @@ export default function AdminDashboardPage() {
           </h1>
           <p className="text-zinc-500">{t('adm_sub')}</p>
         </div>
-        <Link
-          href="/dashboard/admin/audit-log"
-          className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white text-sm rounded-lg transition-colors"
-        >
-          <Shield size={14} />
-          {t('audit_link')}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/admin/seasons"
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white text-sm rounded-lg transition-colors"
+          >
+            <Trophy size={14} />
+            Season & Awards
+          </Link>
+          <Link
+            href="/dashboard/admin/audit-log"
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white text-sm rounded-lg transition-colors"
+          >
+            <Shield size={14} />
+            {t('audit_link')}
+          </Link>
+        </div>
       </div>
 
       {/* Pending members */}

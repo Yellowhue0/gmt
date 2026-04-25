@@ -8,7 +8,7 @@ import {
   Menu, X, Bell, LogOut,
   User as UserIcon, BarChart2, Settings, Swords,
   Users, Calendar, ClipboardList, DollarSign, TrendingUp,
-  FileText,
+  FileText, Trophy,
 } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { formatRelative } from '@/lib/utils'
@@ -84,6 +84,7 @@ function getDropdownSections(role: string): NavItem[][] {
           { href: '/dashboard/trainer',         icon: Calendar,      label: 'Session Management' },
           { href: '/dashboard/admin/fighters',  icon: Swords,        label: 'Fighters Group' },
           { href: '/dashboard/trainer',         icon: ClipboardList, label: 'Check-in Register' },
+          { href: '/dashboard/admin/seasons',   icon: Trophy,        label: 'Season Management' },
           { href: '/dashboard/admin/audit-log', icon: FileText,      label: 'Audit Log' },
           { href: '/dashboard/finance',         icon: DollarSign,    label: 'Finance & Payments' },
           settings,
@@ -161,12 +162,17 @@ export default function Navbar() {
   const rs = user ? roleStyle(user.role) : DEFAULT_STYLE
   const sections = user ? getDropdownSections(user.role) : []
 
-  const centerLinks = [
+  const publicLinks = [
     { href: '/schema',     label: t('nav_schedule') },
     { href: '/events',     label: t('nav_events') },
     { href: '/community',  label: t('nav_community') },
     { href: '/membership', label: t('nav_membership') },
     { href: '/contact',    label: t('nav_contact') },
+  ]
+
+  const centerLinks = [
+    ...publicLinks,
+    ...(user ? [{ href: '/leaderboard', label: 'Leaderboard 🏆' }] : []),
   ]
 
   return (
