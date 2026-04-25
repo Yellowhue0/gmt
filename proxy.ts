@@ -24,13 +24,15 @@ export async function proxy(request: NextRequest) {
       return res
     }
 
-    // Unconfirmed accounts: only the pending page is allowed
-    if (!payload.isConfirmed && pathname !== '/dashboard/pending') {
+    const isStaff = ['ADMIN', 'TRAINER', 'FINANCE'].includes(payload.role as string)
+
+    // Unconfirmed accounts: only the pending page is allowed (staff are exempt)
+    if (!payload.isConfirmed && !isStaff && pathname !== '/dashboard/pending') {
       return NextResponse.redirect(new URL('/dashboard/pending', request.url))
     }
 
-    // Confirmed accounts should not linger on the pending page
-    if (payload.isConfirmed && pathname === '/dashboard/pending') {
+    // Confirmed accounts (or staff) should not linger on the pending page
+    if ((payload.isConfirmed || isStaff) && pathname === '/dashboard/pending') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 

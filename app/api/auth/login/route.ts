@@ -36,12 +36,13 @@ export async function POST(request: Request) {
       ipAddress: getIp(request),
     })
 
+    const isStaff = ['ADMIN', 'TRAINER', 'FINANCE'].includes(user.role)
     const token = await signToken({
       userId: user.id,
       role: user.role as 'MEMBER' | 'TRAINER' | 'FIGHTER' | 'FINANCE' | 'ADMIN',
       name: user.name,
       email: user.email,
-      isConfirmed: user.isConfirmed,
+      isConfirmed: isStaff ? true : user.isConfirmed,
       isLocked: false,
     })
 
