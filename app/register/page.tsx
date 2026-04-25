@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { SWISH_NUMBER, MEMBERSHIP_PRICE } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function RegisterPage() {
@@ -59,20 +58,6 @@ export default function RegisterPage() {
           <Image src="/glommenlogo.svg" alt="GMT" width={64} height={64} className="mx-auto mb-4 object-contain" />
           <h1 className="text-2xl font-bold text-white">{t('reg_title')}</h1>
           <p className="text-zinc-500 text-sm mt-1">{t('reg_sub')}</p>
-        </div>
-
-        {/* Swish info */}
-        <div className="bg-zinc-900 border border-brand/30 rounded-xl p-4 mb-6">
-          <h2 className="text-brand font-semibold text-sm mb-2 uppercase tracking-wide">{t('reg_payment_title')}</h2>
-          <p className="text-zinc-400 text-sm leading-relaxed">
-            {t('reg_payment_swish')}{' '}
-            <strong className="text-white">{MEMBERSHIP_PRICE} kr</strong>{' '}
-            {t('reg_payment_to')}{' '}
-            <strong className="text-white">{SWISH_NUMBER}</strong>{' '}
-            {t('reg_payment_msg')}{' '}
-            <strong className="text-white">&quot;{t('reg_payment_name_msg')} – {t('reg_payment_membership')}&quot;</strong>.{' '}
-            {t('reg_payment_wait')}
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
