@@ -257,6 +257,15 @@ export default function FightersPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fighters, search, filterWeight, filterCard, filterEvent, sortBy])
 
+  const upcomingEventsForFilter = useMemo(() => {
+    const seen = new Set<string>()
+    const result: Event[] = []
+    fighters.forEach(f => f.competitionEntries.forEach(e => {
+      if (!seen.has(e.eventId)) { seen.add(e.eventId); result.push(e.event) }
+    }))
+    return result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  }, [fighters])
+
   if (loading) return <div className="text-zinc-600 text-center py-20">Laddar...</div>
 
   const CardStatusBadge = ({ expiry }: { expiry: string | null }) => {
@@ -266,15 +275,6 @@ export default function FightersPage() {
     if (status === 'expired') return <span className="flex items-center gap-1 text-xs text-red-400"><XCircle size={12} /> {t('fight_card_expired')}</span>
     return <span className="flex items-center gap-1 text-xs text-zinc-600"><Shield size={12} /> {t('fight_card_none')}</span>
   }
-
-  const upcomingEventsForFilter = useMemo(() => {
-    const seen = new Set<string>()
-    const result: Event[] = []
-    fighters.forEach(f => f.competitionEntries.forEach(e => {
-      if (!seen.has(e.eventId)) { seen.add(e.eventId); result.push(e.event) }
-    }))
-    return result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-  }, [fighters])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
