@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { Calendar, Users, Trophy, MessageCircle, ChevronRight, Clock } from 'lucide-react'
 import { getSessionTypeLabel, formatDate } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
+import type { TranslationKey } from '@/lib/i18n'
+
+type Trainer = { id: string; name: string }
 
 type Session = {
   id: string
@@ -13,11 +16,14 @@ type Session = {
   endTime: string
   type: string
   dayOfWeek: number
+  date: string | null
   isToday: boolean
   checkedIn: boolean
   checkInCount: number
   maxCapacity: number
-  trainer: { name: string } | null
+  isCancelled: boolean
+  isRecurring: boolean
+  trainers: Trainer[]
 }
 
 type Event = {
@@ -37,6 +43,18 @@ const TYPE_COLORS: Record<string, string> = {
   girls: 'bg-pink-900/30 text-pink-300',
 }
 
+// Solid dot colours matching TYPE_COLORS hues
+const TYPE_DOT: Record<string, string> = {
+  regular: 'bg-zinc-500',
+  sparring: 'bg-brand',
+  yoga: 'bg-purple-400',
+  youth: 'bg-blue-400',
+  conditioning: 'bg-orange-400',
+  girls: 'bg-pink-400',
+}
+
+const DAY_KEYS: TranslationKey[] = ['day_0', 'day_1', 'day_2', 'day_3', 'day_4', 'day_5', 'day_6']
+
 export default function HomePage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [events, setEvents] = useState<Event[]>([])
@@ -50,6 +68,30 @@ export default function HomePage() {
   }, [])
 
   const todaySessions = sessions.filter(s => s.isToday)
+
+  // Next 5 upcoming sessions this week (today through Sunday)
+  const todayDow = new Date().getDay()
+  const upcomingSessions = sessions
+    .map(s => {
+      let daysUntil: number
+      if (!s.isRecurring && s.date) {
+        const sessionDay = new Date(s.date)
+        sessionDay.setHours(0, 0, 0, 0)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        daysUntil = Math.round((sessionDay.getTime() - today.getTime()) / 86_400_000)
+      } else {
+        daysUntil = (s.dayOfWeek - todayDow + 7) % 7
+      }
+      return { ...s, daysUntil }
+    })
+    .filter(s => s.daysUntil >= 0 && s.daysUntil <= 6)
+    .sort((a, b) =>
+      a.daysUntil !== b.daysUntil
+        ? a.daysUntil - b.daysUntil
+        : a.startTime.localeCompare(b.startTime),
+    )
+    .slice(0, 5)
 
   const stats = [
     { label: t('home_stat_members'), value: '60+' },
@@ -75,7 +117,6 @@ export default function HomePage() {
         }} />
 
         <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
-          {/* Logo badge */}
           <div className="flex justify-center mb-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/glommenlogo.svg" alt="GLOMMENS MUAY THAI" className="w-28 h-28 sm:w-36 sm:h-36 drop-shadow-2xl" />
@@ -128,6 +169,80 @@ export default function HomePage() {
               <div className="text-xs text-zinc-500 uppercase tracking-wider">{label}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── Mini Schedule Widget ─────────────────────────────────────── */}
+      <section className="py-14 px-4 sm:px-6 lg:px-8 border-b border-zinc-900">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-end justify-between mb-5">
+            <div>
+              <h2 className="text-xl font-bold text-white">{t('home_week_title')}</h2>
+              <p className="text-zinc-500 text-sm mt-0.5">{t('home_week_sub')}</p>
+            </div>
+            <Link
+              href="/schema"
+              className="text-brand hover:text-brand-hover text-sm flex items-center gap-1 transition-colors shrink-0"
+            >
+              {t('home_full_schedule')} <ChevronRight size={14} />
+            </Link>
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            {upcomingSessions.length === 0 ? (
+              <div className="py-10 text-center text-zinc-600 text-sm">
+                {t('home_week_empty')}
+              </div>
+            ) : (
+              <ul className="divide-y divide-zinc-800">
+                {upcomingSessions.map(s => {
+                  const isFullyBooked = !s.isCancelled && s.checkInCount >= s.maxCapacity
+                  const dayLabel = s.daysUntil === 0 ? t('sched_today') : t(DAY_KEYS[s.dayOfWeek])
+                  const trainerName = s.trainers[0]?.name ?? null
+
+                  return (
+                    <li
+                      key={s.id}
+                      className={`flex items-center gap-3 sm:gap-4 px-4 py-3.5 ${s.daysUntil === 0 ? 'bg-zinc-800/40' : ''}`}
+                    >
+                      {/* Day label */}
+                      <span className={`w-9 text-xs font-semibold shrink-0 ${s.daysUntil === 0 ? 'text-brand' : 'text-zinc-500'}`}>
+                        {dayLabel}
+                      </span>
+
+                      {/* Type dot */}
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.isCancelled ? 'bg-red-500' : (TYPE_DOT[s.type] ?? 'bg-zinc-500')}`} />
+
+                      {/* Name + trainer */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${s.isCancelled ? 'line-through text-zinc-600' : 'text-white'}`}>
+                          {s.name}
+                        </p>
+                        {trainerName && (
+                          <p className="text-zinc-600 text-xs truncate mt-0.5">{trainerName}</p>
+                        )}
+                      </div>
+
+                      {/* Badges + time */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {s.isCancelled && (
+                          <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-red-900/40 text-red-400 font-semibold uppercase tracking-wide">
+                            {t('home_cancelled_badge')}
+                          </span>
+                        )}
+                        {isFullyBooked && (
+                          <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400 font-semibold uppercase tracking-wide">
+                            {t('home_fully_booked')}
+                          </span>
+                        )}
+                        <span className="text-zinc-500 text-xs tabular-nums">{s.startTime}</span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
 
@@ -219,7 +334,6 @@ export default function HomePage() {
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            {/* Map */}
             <div className="lg:col-span-2 rounded-xl overflow-hidden border border-zinc-800 shadow-lg shadow-black/40">
               <iframe
                 src="https://maps.google.com/maps?q=Glommens+Thaiboxningsklubb+Falkenberg+Sweden&t=&z=15&ie=UTF8&iwloc=&output=embed"
@@ -233,7 +347,6 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Info panel */}
             <div className="flex flex-col gap-5">
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
                 <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">{t('contact_address_label')}</p>
@@ -295,6 +408,8 @@ function SessionPreview({ session, user }: { session: Session; user: { name: str
     setLoading(false)
   }
 
+  const trainerName = session.trainers[0]?.name ?? null
+
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5">
       <div className="flex items-start justify-between mb-3">
@@ -311,7 +426,7 @@ function SessionPreview({ session, user }: { session: Session; user: { name: str
       <div className="flex items-center gap-1 text-zinc-400 text-sm mb-4">
         <Clock size={14} />
         {session.startTime}–{session.endTime}
-        {session.trainer && <span className="ml-2 text-zinc-600">· {session.trainer.name}</span>}
+        {trainerName && <span className="ml-2 text-zinc-600">· {trainerName}</span>}
       </div>
       <button
         onClick={handleCheckIn}

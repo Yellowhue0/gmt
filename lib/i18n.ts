@@ -46,6 +46,11 @@ const translations = {
     home_register_free: 'Registrera dig gratis',
     home_checkin: 'Checka in',
     home_checked_in: '✓ Incheckad',
+    home_week_title: 'Veckans Pass',
+    home_week_sub: 'Kommande pass den här veckan',
+    home_week_empty: 'Inga fler pass den här veckan',
+    home_fully_booked: 'Fullbokat',
+    home_cancelled_badge: 'Inställt',
 
     // Schedule
     sched_title: 'Träningsschema',
@@ -685,6 +690,11 @@ const translations = {
     home_register_free: 'Register for free',
     home_checkin: 'Check in',
     home_checked_in: '✓ Checked in',
+    home_week_title: 'This Week',
+    home_week_sub: 'Upcoming sessions this week',
+    home_week_empty: 'No more sessions this week',
+    home_fully_booked: 'Fully Booked',
+    home_cancelled_badge: 'Cancelled',
 
     // Schedule
     sched_title: 'Training Schedule',
