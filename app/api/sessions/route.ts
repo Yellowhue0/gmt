@@ -39,6 +39,10 @@ export async function GET() {
       assignedTrainers: { include: { user: { select: { id: true, name: true } } } },
       confirmedTrainers: { include: { user: { select: { id: true, name: true } } } },
       _count: { select: { checkIns: true } },
+      checkIns: {
+        where: { date: today },
+        include: { user: { select: { id: true, name: true } } },
+      },
     },
     orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
   })
@@ -98,6 +102,7 @@ export async function GET() {
         checkInCount: s._count.checkIns,
         trainers,
         confirmedTrainers: s.confirmedTrainers,
+        attendees: user ? s.checkIns.map(c => ({ id: c.userId, name: c.user.name })) : null,
       }
     })
 

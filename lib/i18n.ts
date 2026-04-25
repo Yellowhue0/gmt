@@ -61,6 +61,7 @@ const translations = {
     sched_sunday_link: 'Community → Sparring',
     sched_sunday_suffix: 'för aktuell tid varje vecka.',
     sched_today: 'Idag',
+    sched_attendees: 'Deltagare idag',
     sched_not_available: 'Ej tillgängligt idag',
     sched_checked_in_count: 'incheckade',
     sched_max: 'max',
@@ -292,6 +293,8 @@ const translations = {
     prof_save: 'Spara',
     prof_bio_saved: 'Bio sparad!',
     prof_name_saved: 'Namn uppdaterat!',
+    prof_weight_label: 'Vikt',
+    prof_weight_saved: 'Vikt sparad!',
     prof_error: 'Något gick fel',
 
     // Trainer
@@ -706,6 +709,7 @@ const translations = {
     sched_sunday_link: 'Community → Sparring',
     sched_sunday_suffix: 'for the current time each week.',
     sched_today: 'Today',
+    sched_attendees: 'Attendees today',
     sched_not_available: 'Not available today',
     sched_checked_in_count: 'checked in',
     sched_max: 'max',
@@ -937,6 +941,8 @@ const translations = {
     prof_save: 'Save',
     prof_bio_saved: 'Bio saved!',
     prof_name_saved: 'Name updated!',
+    prof_weight_label: 'Weight',
+    prof_weight_saved: 'Weight saved!',
     prof_error: 'Something went wrong',
 
     // Trainer

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx prisma *)",
+      "Read(//c/c/Users/GAMMA13/Documents/Sites/Mappest/falkenberg-muaythai/**)",
+      "Bash(export DATABASE_URL=$\\(grep '^DATABASE_URL=' falkenberg-muaythai/.env)",
+      "Bash(git -C '/c/Users/GAMMA13/Documents/Sites/Mappest' rev-parse --show-toplevel)",
+      "Bash(git -C '/c/Users/GAMMA13/Documents/Sites/Mappest/falkenberg-muaythai' rev-parse --show-toplevel)",
+      "Bash(git -C '/c/Users/GAMMA13/Documents/Sites/Mappest' submodule status)",
+      "Bash(git -C '/c/Users/GAMMA13/Documents/Sites/Mappest' status --short)",
+      "Bash(git -C '/c/Users/GAMMA13/Documents/Sites/Mappest' log --oneline -3)",
+      "Bash(git -C '/c/Users/GAMMA13/Documents/Sites/Mappest/falkenberg-muaythai' log --oneline -3)",
+      "Bash(git -C '/c/Users/GAMMA13/Documents/Sites/Mappest' ls-files --stage falkenberg-muaythai)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(git -C '/c/Users/GAMMA13/Documents/Sites/Mappest' push origin master)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\GAMMA13\\Documents\\Sites\\Mappest\\app\\api\\sessions\\[id]",
+      "c:\\Users\\GAMMA13\\Documents\\Sites\\Mappest\\app\\schedule"
+    ]
+  }
+}

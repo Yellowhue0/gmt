@@ -27,6 +27,7 @@ type Session = {
   isRecurring: boolean
   seriesId: string | null
   trainers: Trainer[]
+  attendees: { id: string; name: string }[] | null
 }
 
 type CurrentUser = { name: string; role: string; id?: string } | null
@@ -499,6 +500,24 @@ function SessionCard({
           />
         </div>
       </div>
+
+      {/* Attendees — visible to logged-in users for today's sessions */}
+      {isToday && session.attendees !== null && (
+        <div className="mb-4">
+          <p className="text-xs text-zinc-600 uppercase tracking-wider mb-1.5">{t('sched_attendees')}</p>
+          {session.attendees.length === 0 ? (
+            <p className="text-xs text-zinc-700">—</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {session.attendees.map(a => (
+                <span key={a.id} className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">
+                  {a.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Check-in button */}
       {isToday ? (

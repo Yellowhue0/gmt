@@ -23,6 +23,7 @@ type UserProfile = {
   swishNumber: string | null
   phone: string | null
   createdAt: string
+  currentWeight: number | null
 }
 
 type Toast = { type: 'success' | 'error'; message: string }
@@ -134,6 +135,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
+  const [weight, setWeight] = useState('')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<Toast | null>(null)
   const { t } = useLanguage()
@@ -148,7 +150,7 @@ export default function ProfilePage() {
       .then(r => r.json())
       .then(d => {
         const u = d.data as UserProfile | null
-        if (u) { setProfile(u); setName(u.name); setBio(u.bio ?? '') }
+        if (u) { setProfile(u); setName(u.name); setBio(u.bio ?? ''); setWeight(u.currentWeight?.toString() ?? '') }
         setLoading(false)
       })
   }, [])
@@ -180,6 +182,26 @@ export default function ProfilePage() {
   const showToast = (type: Toast['type'], message: string) => {
     setToast({ type, message })
     setTimeout(() => setToast(null), 3500)
+  }
+
+  const saveWeight = async () => {
+    if (!profile) return
+    const val = weight.trim() === '' ? null : parseFloat(weight)
+    if (val === profile.currentWeight) return
+    setSaving(true)
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentWeight: val }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setProfile(prev => prev ? { ...prev, currentWeight: data.data.currentWeight } : prev)
+      showToast('success', t('prof_weight_saved'))
+    } else {
+      showToast('error', data.error ?? t('prof_error'))
+    }
+    setSaving(false)
   }
 
   const saveBio = async () => {
@@ -370,6 +392,31 @@ export default function ProfilePage() {
             onClick={saveBio}
             disabled={saving || bio === (profile.bio ?? '')}
             className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {t('prof_save')}
+          </button>
+        </div>
+      </div>
+
+      {/* Weight */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-5">
+        <h2 className="text-xs text-zinc-500 uppercase tracking-wider mb-1">{t('prof_weight_label')}</h2>
+        <p className="text-zinc-600 text-xs mb-4">{t('fight_current_weight')} (kg)</p>
+        <div className="flex gap-3">
+          <input
+            type="number"
+            step="0.1"
+            min="30"
+            max="300"
+            value={weight}
+            onChange={e => setWeight(e.target.value)}
+            placeholder="—"
+            className="w-32 bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-brand"
+          />
+          <button
+            onClick={saveWeight}
+            disabled={saving || (weight.trim() === '' ? null : parseFloat(weight)) === profile.currentWeight}
+            className="px-4 py-2.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
           >
             {t('prof_save')}
           </button>

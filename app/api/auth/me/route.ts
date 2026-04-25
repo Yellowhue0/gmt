@@ -25,6 +25,7 @@ export async function GET() {
       isConfirmed: true,
       isLocked: true,
       lockedReason: true,
+      currentWeight: true,
     },
   })
 

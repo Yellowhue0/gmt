@@ -45,6 +45,15 @@ export async function PATCH(request: Request) {
     details.push(`username changed from "${current.name}" to "${newName}"`)
   }
 
+  if (body.currentWeight !== undefined) {
+    const w = body.currentWeight === null || body.currentWeight === '' ? null : Number(body.currentWeight)
+    if (w !== null && (isNaN(w) || w < 30 || w > 300)) {
+      return NextResponse.json({ error: 'Ogiltig vikt' }, { status: 400 })
+    }
+    data.currentWeight = w
+    details.push('weight updated')
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'Inget att uppdatera' }, { status: 400 })
   }
@@ -52,7 +61,7 @@ export async function PATCH(request: Request) {
   const updated = await prisma.user.update({
     where: { id: user.userId },
     data,
-    select: { id: true, name: true, bio: true, usernameChangesCount: true },
+    select: { id: true, name: true, bio: true, usernameChangesCount: true, currentWeight: true },
   })
 
   await logAudit({
