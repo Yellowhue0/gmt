@@ -520,7 +520,7 @@ function SessionListItem({
               )}
             </div>
             <div className={`text-xs mt-0.5 ${s.isCancelled ? 'text-zinc-600' : 'text-zinc-500'}`}>
-              {s.startTime}–{s.endTime} · {getSessionTypeLabel(s.type)}
+              {s.startTime}–{s.endTime} · {getSessionTypeLabel(s.type, t)}
             </div>
             {!s.isCancelled && hasTrainer && (
               <div className="flex flex-wrap gap-1 mt-1">

@@ -37,7 +37,18 @@ export function formatRelative(date: string | Date): string {
   return formatDate(d)
 }
 
-export function getSessionTypeLabel(type: string): string {
+export function getSessionTypeLabel(type: string, t?: (key: string) => string): string {
+  if (t) {
+    const keyMap: Record<string, string> = {
+      regular: 'type_regular',
+      sparring: 'type_sparring',
+      youth: 'type_youth',
+      conditioning: 'type_conditioning',
+      girls: 'type_girls',
+    }
+    const key = keyMap[type]
+    if (key) return t(key as never)
+  }
   const labels: Record<string, string> = {
     regular: 'Träning',
     sparring: 'Sparring',

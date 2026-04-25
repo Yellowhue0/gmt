@@ -360,7 +360,7 @@ function SessionPreview({ session, user }: { session: Session; user: { name: str
       <div className="flex items-start justify-between mb-3">
         <div>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[session.type] ?? 'bg-zinc-700 text-zinc-300'}`}>
-            {getSessionTypeLabel(session.type)}
+            {getSessionTypeLabel(session.type, t)}
           </span>
         </div>
         <span className="text-zinc-500 text-xs flex items-center gap-1">

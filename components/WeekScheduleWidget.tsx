@@ -49,7 +49,7 @@ function getMondayOf(weekOffset: number): Date {
 }
 
 export function WeekScheduleWidget({ sessions }: { sessions: SessionForWidget[] }) {
-  const { lang } = useLanguage()
+  const { lang, t } = useLanguage()
 
   const todayDow = new Date().getDay()
   const todayDisplayIdx = DISPLAY_TO_DOW.indexOf(todayDow)
@@ -91,9 +91,9 @@ export function WeekScheduleWidget({ sessions }: { sessions: SessionForWidget[] 
     { dot: 'bg-zinc-500',   label: lang === 'sv' ? 'Alla' : 'General' },
     { dot: 'bg-red-400',    label: 'Fighters' },
     { dot: 'bg-blue-400',   label: lang === 'sv' ? 'Barn' : 'Kids' },
-    { dot: 'bg-orange-400', label: 'Sparring' },
+    { dot: 'bg-orange-400', label: t('type_sparring') },
     { dot: 'bg-purple-400', label: 'Yoga' },
-    { dot: 'bg-pink-400',   label: 'Girls' },
+    { dot: 'bg-pink-400',   label: t('type_girls') },
   ]
 
   // Shared pill renderer

@@ -29,20 +29,20 @@ type Props = {
   onSaved: () => void
 }
 
-const SESSION_TYPES = [
-  { value: 'regular', label: 'Träning' },
-  { value: 'sparring', label: 'Sparring' },
-  { value: 'yoga', label: 'Yoga' },
-  { value: 'youth', label: 'Ungdom' },
-  { value: 'conditioning', label: 'Kondition' },
-  { value: 'girls', label: 'Tjejklass' },
-]
-
 const DAY_LABELS = ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag']
 
 export default function SessionFormModal({ session, onClose, onSaved }: Props) {
   const { t } = useLanguage()
   const isEdit = !!session?.id
+
+  const SESSION_TYPES = [
+    { value: 'regular', label: t('type_regular') },
+    { value: 'sparring', label: t('type_sparring') },
+    { value: 'yoga', label: 'Yoga' },
+    { value: 'youth', label: t('type_youth') },
+    { value: 'conditioning', label: t('type_conditioning') },
+    { value: 'girls', label: t('type_girls') },
+  ]
 
   const [name, setName] = useState(session?.name ?? '')
   const [description, setDescription] = useState(session?.description ?? '')

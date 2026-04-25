@@ -406,7 +406,7 @@ function SessionCard({
         <div className="relative z-10">
           <div className="flex justify-between items-start mb-2">
             <span className="text-xs bg-zinc-800/80 text-zinc-400 px-2 py-0.5 rounded-full">
-              {getSessionTypeLabel(s.type)}
+              {getSessionTypeLabel(s.type, t)}
             </span>
             {/* CANCELLED stamp */}
             <span className="text-xs font-black tracking-widest text-red-400 border border-red-700/60 bg-red-950/60 px-2 py-0.5 rounded">
@@ -446,7 +446,7 @@ function SessionCard({
     <div className="bg-zinc-900 border border-brand/20 rounded-xl p-4">
       <div className="flex justify-between items-start mb-3">
         <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">
-          {getSessionTypeLabel(s.type)}
+          {getSessionTypeLabel(s.type, t)}
         </span>
         <span className="text-zinc-600 text-xs flex items-center gap-1">
           <Users size={11} /> {s.checkInCount}/{s.maxCapacity}

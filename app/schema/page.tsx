@@ -352,7 +352,7 @@ function SessionCard({
       <div className="flex items-start justify-between mb-3 gap-2">
         <div className="flex flex-wrap gap-1.5 flex-1">
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[session.type] ?? 'bg-zinc-800 text-zinc-300'}`}>
-            {getSessionTypeLabel(session.type)}
+            {getSessionTypeLabel(session.type, t)}
           </span>
           {session.isRecurring && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 flex items-center gap-1">
