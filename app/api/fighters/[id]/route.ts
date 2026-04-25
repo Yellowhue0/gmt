@@ -18,33 +18,38 @@ export async function GET(
     return NextResponse.json({ error: 'Ej behörig' }, { status: 403 })
   }
 
-  const fighter = await prisma.user.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      avatarUrl: true,
-      fighterCardNumber: true,
-      fighterCardExpiry: true,
-      weightClass: true,
-      currentWeight: true,
-      wins: true,
-      losses: true,
-      draws: true,
-      _count: { select: { checkIns: true } },
-      competitionEntries: {
-        include: {
-          event: { select: { id: true, title: true, date: true, location: true } },
+  try {
+    const fighter = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        fighterCardNumber: true,
+        fighterCardExpiry: true,
+        weightClass: true,
+        currentWeight: true,
+        wins: true,
+        losses: true,
+        draws: true,
+        _count: { select: { checkIns: true } },
+        competitionEntries: {
+          include: {
+            event: { select: { id: true, title: true, date: true, location: true } },
+          },
+          orderBy: { event: { date: 'asc' } },
         },
-        orderBy: { event: { date: 'asc' } },
       },
-    },
-  })
+    })
 
-  if (!fighter) return NextResponse.json({ error: 'Inte hittad' }, { status: 404 })
+    if (!fighter) return NextResponse.json({ error: 'Inte hittad' }, { status: 404 })
 
-  return NextResponse.json({ data: fighter })
+    return NextResponse.json({ data: fighter })
+  } catch (err) {
+    console.error('[GET /api/fighters/[id]]', err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
 }
 
 export async function PATCH(

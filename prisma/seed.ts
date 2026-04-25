@@ -68,6 +68,107 @@ async function main() {
 
   console.log('Users created')
 
+  // Test fighters
+  const fighterPass = await hash('fighter123!', 12)
+  const fighter1 = await prisma.user.upsert({
+    where: { email: 'fighter1@gmt.se' },
+    update: {},
+    create: {
+      name: 'Erik Svensson',
+      email: 'fighter1@gmt.se',
+      password: fighterPass,
+      role: 'FIGHTER',
+      membershipPaid: true,
+      isConfirmed: true,
+      membershipEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      fighterCardNumber: 'SMF-2024-001',
+      fighterCardExpiry: new Date(Date.now() + 200 * 24 * 60 * 60 * 1000),
+      weightClass: 'Lightweight',
+      currentWeight: 70.5,
+      wins: 4,
+      losses: 2,
+      draws: 1,
+    },
+  })
+
+  const fighter2 = await prisma.user.upsert({
+    where: { email: 'fighter2@gmt.se' },
+    update: {},
+    create: {
+      name: 'Sofia Lindqvist',
+      email: 'fighter2@gmt.se',
+      password: fighterPass,
+      role: 'FIGHTER',
+      membershipPaid: true,
+      isConfirmed: true,
+      membershipEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      fighterCardNumber: 'SMF-2024-002',
+      fighterCardExpiry: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+      weightClass: 'Strawweight',
+      currentWeight: 51.0,
+      wins: 2,
+      losses: 1,
+      draws: 0,
+    },
+  })
+
+  await prisma.user.upsert({
+    where: { email: 'fighter3@gmt.se' },
+    update: {},
+    create: {
+      name: 'Marcus Johansson',
+      email: 'fighter3@gmt.se',
+      password: fighterPass,
+      role: 'FIGHTER',
+      membershipPaid: true,
+      isConfirmed: true,
+      membershipEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      weightClass: 'Welterweight',
+      currentWeight: 77.0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+    },
+  })
+
+  // Competition entries for fighter1
+  const smEvent = await prisma.event.findFirst({ where: { title: { contains: 'SM i Muay Thai' } } })
+  const galaEvent = await prisma.event.findFirst({ where: { title: { contains: 'Falkenberg Fight Night' } } })
+
+  if (smEvent) {
+    const existing = await prisma.fighterCompetitionEntry.findFirst({ where: { fighterId: fighter1.id, eventId: smEvent.id } })
+    if (!existing) {
+      await prisma.fighterCompetitionEntry.create({
+        data: {
+          fighterId: fighter1.id,
+          eventId: smEvent.id,
+          weightAtEntry: 70.0,
+          opponent: 'TBC',
+          result: null,
+          enteredBy: admin.id,
+        },
+      })
+    }
+  }
+
+  if (galaEvent) {
+    const existing = await prisma.fighterCompetitionEntry.findFirst({ where: { fighterId: fighter2.id, eventId: galaEvent.id } })
+    if (!existing) {
+      await prisma.fighterCompetitionEntry.create({
+        data: {
+          fighterId: fighter2.id,
+          eventId: galaEvent.id,
+          weightAtEntry: 51.0,
+          opponent: 'Anna Berg',
+          result: null,
+          enteredBy: admin.id,
+        },
+      })
+    }
+  }
+
+  console.log('Fighters created')
+
   // Clear check-ins first (FK dependency), then recreate sessions
   await prisma.checkIn.deleteMany({})
   await prisma.gymSession.deleteMany({})
