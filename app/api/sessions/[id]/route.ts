@@ -1,6 +1,69 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { getTodayString } from '@/lib/utils'
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getCurrentUser()
+  const { id } = await params
+  const today = getTodayString()
+
+  const session = await prisma.gymSession.findUnique({
+    where: { id },
+    include: {
+      trainer: { select: { id: true, name: true } },
+      assignedTrainers: { include: { user: { select: { id: true, name: true } } } },
+      _count: { select: { checkIns: true } },
+    },
+  })
+
+  if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  let checkedIn = false
+  if (user) {
+    const ci = await prisma.checkIn.findFirst({
+      where: { userId: user.userId, sessionId: id, date: today },
+    })
+    checkedIn = !!ci
+  }
+
+  const trainerMap = new Map<string, { id: string; name: string }>()
+  if (session.trainer) trainerMap.set(session.trainer.id, session.trainer)
+  session.assignedTrainers.forEach(at => trainerMap.set(at.user.id, at.user))
+
+  const todayDow = new Date().getDay()
+  const todayDate = new Date()
+  todayDate.setHours(0, 0, 0, 0)
+  const isOneTimeToday = !session.isRecurring && session.specificDate
+    ? session.specificDate.toISOString().split('T')[0] === today
+    : false
+  const isRecurringToday = session.isRecurring && session.dayOfWeek === todayDow
+
+  return NextResponse.json({
+    data: {
+      id: session.id,
+      name: session.name,
+      description: session.description,
+      dayOfWeek: session.dayOfWeek,
+      date: session.specificDate ? session.specificDate.toISOString() : null,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      type: session.type,
+      classType: session.classType,
+      maxCapacity: session.maxCapacity,
+      isRecurring: session.isRecurring,
+      isCancelled: session.isCancelled,
+      cancellationReason: session.cancellationReason,
+      isToday: isOneTimeToday || isRecurringToday,
+      checkedIn,
+      checkInCount: session._count.checkIns,
+      trainers: [...trainerMap.values()],
+    },
+  })
+}
 
 export async function PUT(
   request: Request,
