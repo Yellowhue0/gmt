@@ -74,7 +74,7 @@ export async function GET() {
       prisma.registration.findMany({
         where: { userId: user.userId, date: { gte: today } },
         select: { sessionId: true, date: true },
-      }),
+      }).catch(() => [] as { sessionId: string; date: string }[]),
       prisma.sessionConfirmedTrainer.findMany({
         where: { userId: user.userId },
         select: { sessionId: true },
