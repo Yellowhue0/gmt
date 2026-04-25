@@ -85,6 +85,12 @@ export async function GET() {
     myConfirmed = confirmed.map((c) => c.sessionId)
   }
 
+  type RegEntry = { sessionId: string; date: string; user: { id: string; name: string } }
+  const allRegistrations: RegEntry[] = await prisma.registration.findMany({
+    where: { date: { gte: today } },
+    select: { sessionId: true, date: true, user: { select: { id: true, name: true } } },
+  }).catch(() => [])
+
   const data = sessions
     .filter((s) => canSeeSession(s.visibility, s.classType, role))
     .map((s) => {
@@ -108,6 +114,12 @@ export async function GET() {
       const registered = myRegistrations.some(
         (r) => r.sessionId === s.id && r.date === registrationDate
       )
+
+      const sessionRegistrants = allRegistrations.filter(
+        (r) => r.sessionId === s.id && r.date === registrationDate
+      )
+      const registrationCount = sessionRegistrants.length
+      const registrants = user ? sessionRegistrants.map((r) => r.user) : null
 
       const [startH, startM] = s.startTime.split(':').map(Number)
       const [endH, endM] = s.endTime.split(':').map(Number)
@@ -140,9 +152,11 @@ export async function GET() {
         isCheckInOpen,
         iAmConfirmed: myConfirmed.includes(s.id),
         checkInCount: s._count.checkIns,
+        registrationCount,
+        registrants,
         trainers,
         confirmedTrainers: s.confirmedTrainers,
-        attendees: user ? s.checkIns.map(c => ({ id: c.userId, name: c.user.name })) : null,
+        attendees: user ? s.checkIns.map((c) => ({ id: c.userId, name: c.user.name })) : null,
       }
     })
 

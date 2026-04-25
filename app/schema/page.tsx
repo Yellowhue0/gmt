@@ -27,13 +27,15 @@ type Session = {
   registrationDate: string
   isCheckInOpen: boolean
   checkInCount: number
+  registrationCount: number
+  registrants: { id: string; name: string }[] | null
   isRecurring: boolean
   seriesId: string | null
   trainers: Trainer[]
   attendees: { id: string; name: string }[] | null
 }
 
-type CurrentUser = { name: string; role: string; id?: string } | null
+type CurrentUser = { id: string; name: string; role: string } | null
 
 const TYPE_COLORS: Record<string, string> = {
   regular: 'bg-zinc-800 text-zinc-300',
@@ -90,7 +92,18 @@ export default function SchemaPage() {
     })
     if (res.ok) {
       setSessions((prev) =>
-        prev.map((s) => s.id === session.id ? { ...s, registered: !s.registered } : s)
+        prev.map((s) => {
+          if (s.id !== session.id) return s
+          const wasRegistered = s.registered
+          return {
+            ...s,
+            registered: !wasRegistered,
+            registrationCount: s.registrationCount + (wasRegistered ? -1 : 1),
+            registrants: wasRegistered
+              ? (s.registrants ?? []).filter((r) => r.id !== user.id)
+              : [...(s.registrants ?? []), { id: user.id, name: user.name }],
+          }
+        })
       )
     }
   }
@@ -348,7 +361,7 @@ function SessionCard({
   const { t } = useLanguage()
 
   const isToday = session.isToday
-  const pct = Math.min((session.checkInCount / session.maxCapacity) * 100, 100)
+  const regPct = Math.min((session.registrationCount / session.maxCapacity) * 100, 100)
   const assignedIds = new Set(session.trainers.map((tr) => tr.id))
   const isSelfAssigned = user?.id ? assignedIds.has(user.id) : false
 
@@ -509,31 +522,31 @@ function SessionCard({
         )}
       </div>
 
-      {/* Capacity bar */}
+      {/* Capacity bar — based on sign-ups */}
       <div className="mb-4">
-        <div className="flex justify-between text-xs text-zinc-600 mb-1">
-          <span>{session.checkInCount}/{session.maxCapacity} {t('sess_capacity')}</span>
-          <span>{Math.round(pct)}%</span>
+        <div className="flex justify-between text-xs text-zinc-500 mb-1">
+          <span>{session.registrationCount}/{session.maxCapacity} {t('sess_capacity')}</span>
+          <span>{Math.round(regPct)}%</span>
         </div>
         <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-brand'}`}
-            style={{ width: `${pct}%` }}
+            className={`h-full rounded-full transition-all ${regPct >= 90 ? 'bg-red-500' : regPct >= 70 ? 'bg-amber-500' : 'bg-brand'}`}
+            style={{ width: `${regPct}%` }}
           />
         </div>
       </div>
 
-      {/* Attendees — visible to logged-in users for today's sessions */}
-      {isToday && session.attendees !== null && (
+      {/* Sign-ups list */}
+      {session.registrants !== null && (
         <div className="mb-4">
-          <p className="text-xs text-zinc-600 uppercase tracking-wider mb-1.5">{t('sched_attendees')}</p>
-          {session.attendees.length === 0 ? (
-            <p className="text-xs text-zinc-700">—</p>
-          ) : (
+          <p className="text-xs text-zinc-600 uppercase tracking-wider mb-1.5">
+            {session.registrationCount === 0 ? 'Inga anmälda' : `Anmälda (${session.registrationCount})`}
+          </p>
+          {session.registrationCount > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {session.attendees.map(a => (
-                <span key={a.id} className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">
-                  {a.name}
+              {session.registrants!.map((r) => (
+                <span key={r.id} className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">
+                  {r.name}
                 </span>
               ))}
             </div>
