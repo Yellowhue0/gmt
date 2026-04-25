@@ -44,6 +44,7 @@ function getDropdownSections(role: string): NavItem[][] {
   const profile: NavItem = { href: '/dashboard/profile', icon: UserIcon, label: 'My Profile' }
   const training: NavItem = { href: '/dashboard', icon: BarChart2, label: 'Training History' }
   const settings: NavItem = { href: '/dashboard/profile', icon: Settings, label: 'Settings' }
+  const leaderboard: NavItem = { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' }
 
   switch (role) {
     case 'FIGHTER':
@@ -51,12 +52,13 @@ function getDropdownSections(role: string): NavItem[][] {
         profile,
         { href: '/dashboard/fighter/profile', icon: Swords,  label: 'My Fight Record' },
         training,
+        leaderboard,
         settings,
       ]]
 
     case 'TRAINER':
       return [
-        [profile, training],
+        [profile, training, leaderboard],
         [
           { href: '/dashboard/trainer',        icon: Users,         label: 'Member Management' },
           { href: '/dashboard/trainer',        icon: Calendar,      label: 'Session Management' },
@@ -68,7 +70,7 @@ function getDropdownSections(role: string): NavItem[][] {
 
     case 'FINANCE':
       return [
-        [profile],
+        [profile, leaderboard],
         [
           { href: '/dashboard/finance', icon: DollarSign, label: 'Payments & Members' },
           { href: '/dashboard/finance', icon: TrendingUp,  label: 'Attendance Reports' },
@@ -78,7 +80,7 @@ function getDropdownSections(role: string): NavItem[][] {
 
     case 'ADMIN':
       return [
-        [profile],
+        [profile, leaderboard],
         [
           { href: '/dashboard/admin',           icon: Users,         label: 'Member Management' },
           { href: '/dashboard/trainer',         icon: Calendar,      label: 'Session Management' },
@@ -92,7 +94,7 @@ function getDropdownSections(role: string): NavItem[][] {
       ]
 
     default: // MEMBER, JUNIOR, PARENT
-      return [[profile, training, settings]]
+      return [[profile, training, leaderboard, settings]]
   }
 }
 
@@ -170,10 +172,7 @@ export default function Navbar() {
     { href: '/contact',    label: t('nav_contact') },
   ]
 
-  const centerLinks = [
-    ...publicLinks,
-    ...(user ? [{ href: '/leaderboard', label: 'Leaderboard 🏆' }] : []),
-  ]
+  const centerLinks = [...publicLinks]
 
   return (
     <>
