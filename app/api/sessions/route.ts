@@ -47,13 +47,33 @@ export async function GET() {
     orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
   })
 
+  const now = new Date()
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+
+  function nextOccurrenceDate(dayOfWeek: number, endTime: string): string {
+    const todayDow = new Date().getDay()
+    let daysUntil = (dayOfWeek - todayDow + 7) % 7
+    if (daysUntil === 0) {
+      const [eh, em] = endTime.split(':').map(Number)
+      if (nowMinutes > eh * 60 + em) daysUntil = 7
+    }
+    const d = new Date()
+    d.setDate(d.getDate() + daysUntil)
+    return d.toISOString().split('T')[0]
+  }
+
   let myCheckIns: string[] = []
+  let myRegistrations: { sessionId: string; date: string }[] = []
   let myConfirmed: string[] = []
   if (user) {
-    const [checkIns, confirmed] = await Promise.all([
+    const [checkIns, registrations, confirmed] = await Promise.all([
       prisma.checkIn.findMany({
         where: { userId: user.userId, date: today },
         select: { sessionId: true },
+      }),
+      prisma.registration.findMany({
+        where: { userId: user.userId, date: { gte: today } },
+        select: { sessionId: true, date: true },
       }),
       prisma.sessionConfirmedTrainer.findMany({
         where: { userId: user.userId },
@@ -61,6 +81,7 @@ export async function GET() {
       }),
     ])
     myCheckIns = checkIns.map((c) => c.sessionId)
+    myRegistrations = registrations
     myConfirmed = confirmed.map((c) => c.sessionId)
   }
 
@@ -78,6 +99,22 @@ export async function GET() {
           ? s.specificDate.toISOString().split('T')[0] === today
           : false
       const isRecurringToday = s.isRecurring && s.dayOfWeek === todayDow
+      const isToday = isOneTimeToday || isRecurringToday
+
+      const registrationDate = s.isRecurring
+        ? nextOccurrenceDate(s.dayOfWeek, s.endTime)
+        : s.specificDate ? s.specificDate.toISOString().split('T')[0] : today
+
+      const registered = myRegistrations.some(
+        (r) => r.sessionId === s.id && r.date === registrationDate
+      )
+
+      const [startH, startM] = s.startTime.split(':').map(Number)
+      const [endH, endM] = s.endTime.split(':').map(Number)
+      const isCheckInOpen =
+        isToday &&
+        nowMinutes >= startH * 60 + startM - 15 &&
+        nowMinutes <= endH * 60 + endM
 
       return {
         id: s.id,
@@ -96,8 +133,11 @@ export async function GET() {
         seriesId: s.seriesId,
         isCancelled: s.isCancelled,
         cancellationReason: s.cancellationReason,
-        isToday: isOneTimeToday || isRecurringToday,
+        isToday,
         checkedIn: myCheckIns.includes(s.id),
+        registered,
+        registrationDate,
+        isCheckInOpen,
         iAmConfirmed: myConfirmed.includes(s.id),
         checkInCount: s._count.checkIns,
         trainers,

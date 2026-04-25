@@ -23,6 +23,9 @@ type Session = {
   isRecurring: boolean
   isToday: boolean
   checkedIn: boolean
+  registered: boolean
+  registrationDate: string
+  isCheckInOpen: boolean
   checkInCount: number
   trainers: { id: string; name: string }[]
 }
@@ -47,8 +50,9 @@ export default function SessionDetailPage() {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<{ name: string } | null>(null)
   const [checkedIn, setCheckedIn] = useState(false)
+  const [registered, setRegistered] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [checkInLoading, setCheckInLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -60,28 +64,38 @@ export default function SessionDetailPage() {
       if (s.error) { setError(s.error); setLoading(false); return }
       setSession(s.data)
       setCheckedIn(s.data.checkedIn)
+      setRegistered(s.data.registered)
       if (me.data) setUser(me.data)
       setLoading(false)
     }).catch(() => { setError('Failed to load'); setLoading(false) })
   }, [id])
 
+  const handleRegister = async () => {
+    if (!user || !session) { window.location.href = '/login'; return }
+    setActionLoading(true)
+    const method = registered ? 'DELETE' : 'POST'
+    const res = await fetch('/api/registration', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: id, date: session.registrationDate }),
+    })
+    if (res.ok) setRegistered(v => !v)
+    setActionLoading(false)
+  }
+
   const handleCheckIn = async () => {
     if (!user) { window.location.href = '/login'; return }
-    setCheckInLoading(true)
-    const method = checkedIn ? 'DELETE' : 'POST'
+    setActionLoading(true)
     const res = await fetch('/api/checkin', {
-      method,
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: id }),
     })
     if (res.ok) {
-      setCheckedIn(v => !v)
-      setSession(prev => prev ? {
-        ...prev,
-        checkInCount: prev.checkInCount + (checkedIn ? -1 : 1),
-      } : null)
+      setCheckedIn(true)
+      setSession(prev => prev ? { ...prev, checkInCount: prev.checkInCount + 1 } : null)
     }
-    setCheckInLoading(false)
+    setActionLoading(false)
   }
 
   if (loading) {
@@ -224,35 +238,61 @@ export default function SessionDetailPage() {
                 href="/login"
                 className="block w-full py-3 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-semibold text-center transition-colors"
               >
-                {lang === 'sv' ? 'Logga in för att checka in' : 'Log in to check in'}
+                {lang === 'sv' ? 'Logga in för att anmäla dig' : 'Log in to sign up'}
               </Link>
-            ) : !session.isToday ? (
-              <div className="w-full py-3 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-zinc-500 text-sm text-center">
-                {lang === 'sv'
-                  ? 'Incheckning öppnar på passets dag'
-                  : 'Check-in opens on the day of the session'}
-              </div>
             ) : (
-              <button
-                onClick={handleCheckIn}
-                disabled={checkInLoading || (isFull && !checkedIn)}
-                className={`w-full py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
-                  checkedIn
-                    ? 'bg-brand/15 text-brand border border-brand/30 hover:bg-brand/25'
-                    : isFull
-                    ? 'bg-zinc-800 text-zinc-500 border border-zinc-700'
-                    : 'bg-brand hover:bg-brand-hover text-white shadow-lg shadow-brand/20'
-                }`}
-              >
-                {checkInLoading ? '…' : checkedIn ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <CheckCircle2 size={15} />
-                    {lang === 'sv' ? 'Incheckad — Avboka?' : 'Checked in — Cancel?'}
-                  </span>
-                ) : (
-                  lang === 'sv' ? 'Checka in' : 'Check in'
+              <div className="space-y-3">
+                {/* Sign Up / Signed Up */}
+                {!checkedIn && (
+                  <button
+                    onClick={handleRegister}
+                    disabled={actionLoading || isFull}
+                    className={`w-full py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                      registered
+                        ? 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-red-700/50 hover:text-red-400'
+                        : isFull
+                        ? 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                        : 'bg-brand hover:bg-brand-hover text-white shadow-lg shadow-brand/20'
+                    }`}
+                  >
+                    {actionLoading ? '…' : registered
+                      ? (lang === 'sv' ? '✓ Anmäld – Avanmäl?' : '✓ Signed Up – Unregister?')
+                      : isFull
+                      ? (lang === 'sv' ? 'Fullbokat' : 'Fully Booked')
+                      : (lang === 'sv' ? 'Anmäl dig' : 'Sign Up')}
+                  </button>
                 )}
-              </button>
+                {/* Check In — opens 15 min before start */}
+                {registered && session.isCheckInOpen && !checkedIn && (
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={actionLoading}
+                    className="w-full py-3 rounded-xl text-sm font-semibold bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-60"
+                  >
+                    {actionLoading ? '…' : (
+                      <span className="flex items-center justify-center gap-2">
+                        <CheckCircle2 size={15} />
+                        {lang === 'sv' ? 'Checka in' : 'Check In'}
+                      </span>
+                    )}
+                  </button>
+                )}
+                {/* Already checked in */}
+                {checkedIn && (
+                  <div className="w-full py-3 rounded-xl text-sm font-semibold text-center bg-brand/15 text-brand border border-brand/30 flex items-center justify-center gap-2">
+                    <CheckCircle2 size={15} />
+                    {lang === 'sv' ? '✓ Incheckad' : '✓ Checked In'}
+                  </div>
+                )}
+                {/* Check-in opens hint */}
+                {registered && session.isToday && !session.isCheckInOpen && !checkedIn && (
+                  <p className="text-xs text-zinc-600 text-center">
+                    {lang === 'sv'
+                      ? `Incheckning öppnar ${session.startTime} (15 min innan start)`
+                      : `Check-in opens at ${session.startTime} (15 min before start)`}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>

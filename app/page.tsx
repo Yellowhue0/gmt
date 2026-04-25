@@ -19,6 +19,9 @@ type Session = {
   date: string | null
   isToday: boolean
   checkedIn: boolean
+  registered: boolean
+  registrationDate: string
+  isCheckInOpen: boolean
   checkInCount: number
   maxCapacity: number
   isCancelled: boolean
@@ -337,19 +340,32 @@ export default function HomePage() {
 
 function SessionPreview({ session, user }: { session: Session; user: { name: string } | null }) {
   const [checkedIn, setCheckedIn] = useState(session.checkedIn)
+  const [registered, setRegistered] = useState(session.registered)
   const [loading, setLoading] = useState(false)
   const { t } = useLanguage()
+
+  const handleRegister = async () => {
+    if (!user) { window.location.href = '/login'; return }
+    setLoading(true)
+    const method = registered ? 'DELETE' : 'POST'
+    const res = await fetch('/api/registration', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: session.id, date: session.registrationDate }),
+    })
+    if (res.ok) setRegistered(!registered)
+    setLoading(false)
+  }
 
   const handleCheckIn = async () => {
     if (!user) { window.location.href = '/login'; return }
     setLoading(true)
-    const method = checkedIn ? 'DELETE' : 'POST'
     const res = await fetch('/api/checkin', {
-      method,
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: session.id }),
     })
-    if (res.ok) setCheckedIn(!checkedIn)
+    if (res.ok) setCheckedIn(true)
     setLoading(false)
   }
 
@@ -373,17 +389,35 @@ function SessionPreview({ session, user }: { session: Session; user: { name: str
         {session.startTime}–{session.endTime}
         {trainerName && <span className="ml-2 text-zinc-600">· {trainerName}</span>}
       </div>
-      <button
-        onClick={handleCheckIn}
-        disabled={loading}
-        className={`w-full py-2 rounded text-sm font-medium transition-colors ${
-          checkedIn
-            ? 'bg-brand/20 text-brand border border-brand/30 hover:bg-brand/30'
-            : 'bg-brand hover:bg-brand-hover text-white'
-        }`}
-      >
-        {loading ? '...' : checkedIn ? t('home_checked_in') : t('home_checkin')}
-      </button>
+      <div className="space-y-2">
+        {!checkedIn && (
+          <button
+            onClick={handleRegister}
+            disabled={loading}
+            className={`w-full py-2 rounded text-sm font-medium transition-colors disabled:opacity-60 ${
+              registered
+                ? 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-red-700/50 hover:text-red-400'
+                : 'bg-brand hover:bg-brand-hover text-white'
+            }`}
+          >
+            {loading ? '...' : registered ? t('sess_signed_up') : t('sess_sign_up')}
+          </button>
+        )}
+        {registered && session.isCheckInOpen && !checkedIn && (
+          <button
+            onClick={handleCheckIn}
+            disabled={loading}
+            className="w-full py-2 rounded text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-60"
+          >
+            {loading ? '...' : t('sess_checkin_btn')}
+          </button>
+        )}
+        {checkedIn && (
+          <div className="w-full py-2 rounded text-sm font-medium text-center bg-brand/15 text-brand border border-brand/30">
+            {t('sess_checked_in_btn')}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

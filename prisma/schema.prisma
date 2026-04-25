@@ -64,6 +64,7 @@ model User {
   longestStreak         Int       @default(0)
 
   checkIns           CheckIn[]
+  registrations      Registration[]
   posts              Post[]
   comments           Comment[]
   sessions           GymSession[]              @relation("TrainerSessions")
@@ -131,6 +132,7 @@ model GymSession {
   createdAt          DateTime  @default(now())
 
   checkIns          CheckIn[]
+  registrations     Registration[]
   childCheckIns     ChildCheckIn[]
   confirmedTrainers SessionConfirmedTrainer[]
   assignedTrainers  SessionAssignedTrainer[]
@@ -154,6 +156,18 @@ model SessionConfirmedTrainer {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([sessionId, userId])
+}
+
+model Registration {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   GymSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  date      String
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, sessionId, date])
 }
 
 model CheckIn {

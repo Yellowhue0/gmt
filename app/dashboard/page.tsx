@@ -48,6 +48,9 @@ type Session = {
   dayOfWeek: number
   isToday: boolean
   checkedIn: boolean
+  registered: boolean
+  registrationDate: string
+  isCheckInOpen: boolean
   iAmConfirmed: boolean
   checkInCount: number
   maxCapacity: number
@@ -92,18 +95,32 @@ export default function DashboardPage() {
     })
   }, [])
 
+  const handleRegister = async (session: Session) => {
+    if (session.isCancelled) return
+    const method = session.registered ? 'DELETE' : 'POST'
+    const res = await fetch('/api/registration', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: session.id, date: session.registrationDate }),
+    })
+    if (res.ok) {
+      setSessions(prev => prev.map(s =>
+        s.id === session.id ? { ...s, registered: !s.registered } : s
+      ))
+    }
+  }
+
   const handleCheckIn = async (session: Session) => {
     if (session.isCancelled) return
-    const method = session.checkedIn ? 'DELETE' : 'POST'
     const res = await fetch('/api/checkin', {
-      method,
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: session.id }),
     })
     if (res.ok) {
       setSessions(prev => prev.map(s =>
         s.id === session.id
-          ? { ...s, checkedIn: !s.checkedIn, checkInCount: s.checkInCount + (s.checkedIn ? -1 : 1) }
+          ? { ...s, checkedIn: true, checkInCount: s.checkInCount + 1 }
           : s
       ))
     }
@@ -365,6 +382,7 @@ export default function DashboardPage() {
                 key={s.id}
                 session={s}
                 isTrainerOrAdmin={isTrainerOrAdmin}
+                onRegister={() => handleRegister(s)}
                 onCheckIn={() => handleCheckIn(s)}
                 onConfirmTrainer={() => handleConfirmTrainer(s)}
                 onUncancel={() => handleUncancel(s)}
@@ -381,6 +399,7 @@ export default function DashboardPage() {
 function SessionCard({
   session: s,
   isTrainerOrAdmin,
+  onRegister,
   onCheckIn,
   onConfirmTrainer,
   onUncancel,
@@ -388,6 +407,7 @@ function SessionCard({
 }: {
   session: Session
   isTrainerOrAdmin: boolean
+  onRegister: () => void
   onCheckIn: () => void
   onConfirmTrainer: () => void
   onUncancel: () => void
@@ -492,16 +512,38 @@ function SessionCard({
         </button>
       )}
 
-      <button
-        onClick={onCheckIn}
-        className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
-          s.checkedIn
-            ? 'bg-brand/20 text-brand border border-brand/30 hover:bg-brand/30'
-            : 'bg-brand hover:bg-brand-hover text-white'
-        }`}
-      >
-        {s.checkedIn ? t('dash_checked_in') : t('dash_checkin')}
-      </button>
+      <div className="space-y-2">
+        {!s.checkedIn && (
+          <button
+            onClick={onRegister}
+            className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+              s.registered
+                ? 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-red-700/50 hover:text-red-400'
+                : 'bg-brand hover:bg-brand-hover text-white'
+            }`}
+          >
+            {s.registered ? t('sess_signed_up') : t('sess_sign_up')}
+          </button>
+        )}
+        {s.registered && s.isCheckInOpen && !s.checkedIn && (
+          <button
+            onClick={onCheckIn}
+            className="w-full py-2 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors"
+          >
+            {t('sess_checkin_btn')}
+          </button>
+        )}
+        {s.checkedIn && (
+          <div className="w-full py-2 rounded-lg text-sm font-medium text-center bg-brand/15 text-brand border border-brand/30">
+            {t('sess_checked_in_btn')}
+          </div>
+        )}
+        {s.registered && s.isToday && !s.isCheckInOpen && !s.checkedIn && (
+          <p className="text-xs text-zinc-600 text-center">
+            {t('sess_checkin_opens').replace('{time}', s.startTime)}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

@@ -23,6 +23,9 @@ type Session = {
   maxCapacity: number
   isToday: boolean
   checkedIn: boolean
+  registered: boolean
+  registrationDate: string
+  isCheckInOpen: boolean
   checkInCount: number
   isRecurring: boolean
   seriesId: string | null
@@ -76,6 +79,21 @@ export default function SchemaPage() {
   const sessionsByDay = DAY_KEYS.map((_, dow) =>
     sessions.filter((s) => s.dayOfWeek === dow)
   )
+
+  const handleRegister = async (session: Session) => {
+    if (!user) { window.location.href = '/login'; return }
+    const method = session.registered ? 'DELETE' : 'POST'
+    const res = await fetch('/api/registration', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: session.id, date: session.registrationDate }),
+    })
+    if (res.ok) {
+      setSessions((prev) =>
+        prev.map((s) => s.id === session.id ? { ...s, registered: !s.registered } : s)
+      )
+    }
+  }
 
   const handleCheckIn = async (session: Session) => {
     if (!user) { window.location.href = '/login'; return }
@@ -285,6 +303,7 @@ export default function SchemaPage() {
               session={session}
               user={user}
               isAdminOrTrainer={isAdminOrTrainer}
+              onRegister={handleRegister}
               onCheckIn={handleCheckIn}
               onEdit={() => setFormSession(session)}
               onDelete={() => handleDeleteClick(session)}
@@ -303,6 +322,7 @@ function SessionCard({
   session,
   user,
   isAdminOrTrainer,
+  onRegister,
   onCheckIn,
   onEdit,
   onDelete,
@@ -313,6 +333,7 @@ function SessionCard({
   session: Session
   user: CurrentUser
   isAdminOrTrainer: boolean
+  onRegister: (s: Session) => void
   onCheckIn: (s: Session) => void
   onEdit: () => void
   onDelete: () => void
@@ -321,6 +342,7 @@ function SessionCard({
   onAdminAddTrainer: (trainerId: string) => void
 }) {
   const [checkInLoading, setCheckInLoading] = useState(false)
+  const [registerLoading, setRegisterLoading] = useState(false)
   const [trainerPickerOpen, setTrainerPickerOpen] = useState(false)
   const [availableTrainers, setAvailableTrainers] = useState<{ id: string; name: string; role: string }[]>([])
   const { t } = useLanguage()
@@ -519,26 +541,59 @@ function SessionCard({
         </div>
       )}
 
-      {/* Check-in button */}
-      {isToday ? (
-        <button
-          disabled={checkInLoading}
-          onClick={() => {
-            setCheckInLoading(true)
-            Promise.resolve(onCheckIn(session)).finally(() => setCheckInLoading(false))
-          }}
-          className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            session.checkedIn
-              ? 'bg-brand/20 text-brand border border-brand/30 hover:bg-brand/30'
-              : 'bg-brand hover:bg-brand-hover text-white'
-          } disabled:opacity-60`}
-        >
-          {checkInLoading ? '...' : session.checkedIn ? t('sched_cancel_checkin') : t('sched_checkin')}
-        </button>
-      ) : (
-        <div className="w-full py-2.5 rounded-lg text-sm text-center text-zinc-600 bg-zinc-800/50">
-          {t('sched_not_available')}
+      {/* Register / Check-in buttons */}
+      {user ? (
+        <div className="space-y-2">
+          {/* Sign Up / Signed Up */}
+          {!session.checkedIn && (
+            <button
+              disabled={registerLoading}
+              onClick={() => {
+                setRegisterLoading(true)
+                Promise.resolve(onRegister(session)).finally(() => setRegisterLoading(false))
+              }}
+              className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${
+                session.registered
+                  ? 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-red-700/50 hover:text-red-400'
+                  : 'bg-brand hover:bg-brand-hover text-white'
+              }`}
+            >
+              {registerLoading ? '...' : session.registered ? t('sess_signed_up') : t('sess_sign_up')}
+            </button>
+          )}
+          {/* Check In — only when registered + window open */}
+          {session.registered && session.isCheckInOpen && !session.checkedIn && (
+            <button
+              disabled={checkInLoading}
+              onClick={() => {
+                setCheckInLoading(true)
+                Promise.resolve(onCheckIn(session)).finally(() => setCheckInLoading(false))
+              }}
+              className="w-full py-2.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-60"
+            >
+              {checkInLoading ? '...' : t('sess_checkin_btn')}
+            </button>
+          )}
+          {/* Already checked in */}
+          {session.checkedIn && (
+            <div className="w-full py-2.5 rounded-lg text-sm font-medium text-center bg-brand/15 text-brand border border-brand/30">
+              {t('sess_checked_in_btn')}
+            </div>
+          )}
+          {/* Check-in opens soon hint */}
+          {session.registered && session.isToday && !session.isCheckInOpen && !session.checkedIn && (
+            <p className="text-xs text-zinc-600 text-center">
+              {t('sess_checkin_opens').replace('{time}', session.startTime)}
+            </p>
+          )}
         </div>
+      ) : (
+        <button
+          onClick={() => { window.location.href = '/login' }}
+          className="w-full py-2.5 rounded-lg text-sm font-medium bg-brand hover:bg-brand-hover text-white transition-colors"
+        >
+          {t('sess_sign_up')}
+        </button>
       )}
     </div>
   )

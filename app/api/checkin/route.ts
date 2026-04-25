@@ -38,6 +38,27 @@ export async function POST(request: Request) {
     }
   }
 
+  // Must be registered first
+  const registration = await prisma.registration.findUnique({
+    where: { userId_sessionId_date: { userId: user.userId, sessionId, date: today } },
+  })
+  if (!registration) {
+    return NextResponse.json({ error: 'Du måste anmäla dig till passet innan du kan checka in' }, { status: 403 })
+  }
+
+  // Check-in only opens 15 minutes before start
+  const [startH, startM] = session.startTime.split(':').map(Number)
+  const [endH, endM] = session.endTime.split(':').map(Number)
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes()
+  const startMinutes = startH * 60 + startM
+  const endMinutes = endH * 60 + endM
+  if (nowMinutes < startMinutes - 15) {
+    return NextResponse.json({ error: `Incheckning öppnar ${session.startTime.slice(0, 5)} (15 min innan start)` }, { status: 400 })
+  }
+  if (nowMinutes > endMinutes) {
+    return NextResponse.json({ error: 'Passet har redan slutat' }, { status: 400 })
+  }
+
   const existing = await prisma.checkIn.findUnique({
     where: { userId_sessionId_date: { userId: user.userId, sessionId, date: today } },
   })

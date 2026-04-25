@@ -419,6 +419,15 @@ const translations = {
     day_0: 'Söndag', day_1: 'Måndag', day_2: 'Tisdag', day_3: 'Onsdag',
     day_4: 'Torsdag', day_5: 'Fredag', day_6: 'Lördag',
 
+    // Registration / check-in
+    sess_sign_up: 'Anmäl dig',
+    sess_signed_up: '✓ Anmäld',
+    sess_unregister: 'Avanmäl',
+    sess_checkin_opens: 'Incheckning öppnar {time}',
+    sess_checkin_btn: 'Checka in',
+    sess_checked_in_btn: '✓ Incheckad',
+    sess_cancel_checkin: 'Avboka',
+
     // Session types
     type_regular: 'Träning',
     type_sparring: 'Sparring',
@@ -1080,6 +1089,15 @@ const translations = {
     // Days
     day_0: 'Sunday', day_1: 'Monday', day_2: 'Tuesday', day_3: 'Wednesday',
     day_4: 'Thursday', day_5: 'Friday', day_6: 'Saturday',
+
+    // Registration / check-in
+    sess_sign_up: 'Sign Up',
+    sess_signed_up: '✓ Signed Up',
+    sess_unregister: 'Unregister',
+    sess_checkin_opens: 'Check-in opens at {time}',
+    sess_checkin_btn: 'Check In',
+    sess_checked_in_btn: '✓ Checked In',
+    sess_cancel_checkin: 'Cancel',
 
     // Session types
     type_regular: 'Training',
