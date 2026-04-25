@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
   const leaderboard = await prisma.seasonLeaderboard.findMany({
     where: {
       seasonId: targetSeasonId,
-      ...(roleFilter ? { user: { role: roleFilter } } : {}),
+      ...(roleFilter ? { user: { role: roleFilter as 'FIGHTER' } } : {}),
     },
     include: {
       user: {
