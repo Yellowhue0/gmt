@@ -52,12 +52,12 @@ export default function SessionFormModal({ session, onClose, onSaved }: Props) {
   const [type, setType] = useState(session?.type ?? 'regular')
   const [classType, setClassType] = useState(session?.classType ?? 'REGULAR')
   const [visibility, setVisibility] = useState(session?.visibility ?? 'PUBLIC')
-  const [isRecurring, setIsRecurring] = useState(session?.isRecurring ?? true)
+  const [isRecurring, setIsRecurring] = useState(session?.isRecurring ?? false)
   const [recurringDays, setRecurringDays] = useState<number[]>(
     session?.isRecurring && session.dayOfWeek !== undefined ? [session.dayOfWeek] : [1]
   )
   const [date, setDate] = useState(
-    session?.date ? session.date.split('T')[0] : ''
+    session?.date ? session.date.split('T')[0] : new Date().toISOString().split('T')[0]
   )
   const [selectedTrainers, setSelectedTrainers] = useState<string[]>(
     session?.trainers?.map((t) => t.id) ?? []
