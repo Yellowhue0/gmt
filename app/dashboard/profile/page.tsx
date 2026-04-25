@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Camera, CheckCircle2, AlertCircle, User, Flame, Trophy, Star, Calendar } from 'lucide-react'
 import RoleBadge from '@/components/RoleBadge'
 import { useLanguage } from '@/contexts/LanguageContext'
+import type { TranslationKey } from '@/lib/i18n'
 import { formatDate } from '@/lib/utils'
 
 const MAX_BIO = 200
@@ -58,7 +59,7 @@ type HistoryData = {
 
 // ── Activity bar chart ──────────────────────────────────────────────────────
 
-function ActivityChart({ weeks, t }: { weeks: WeekActivity[]; t: (k: string) => string }) {
+function ActivityChart({ weeks, t }: { weeks: WeekActivity[]; t: (k: TranslationKey) => string }) {
   const max = Math.max(...weeks.map(w => w.count), 1)
   return (
     <div>
