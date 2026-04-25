@@ -97,6 +97,7 @@ export async function GET() {
         iAmConfirmed: myConfirmed.includes(s.id),
         checkInCount: s._count.checkIns,
         trainers,
+        confirmedTrainers: s.confirmedTrainers,
       }
     })
 
