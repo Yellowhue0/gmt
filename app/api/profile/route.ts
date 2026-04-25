@@ -14,6 +14,12 @@ export async function PATCH(request: Request) {
   const data: Record<string, unknown> = {}
   const details: string[] = []
 
+  if (body.fullName !== undefined) {
+    const fn = typeof body.fullName === 'string' ? body.fullName.trim() : ''
+    data.fullName = fn || null
+    details.push('fullName updated')
+  }
+
   if (typeof body.bio === 'string') {
     if (body.bio.length > MAX_BIO_LENGTH) {
       return NextResponse.json({ error: `Bio får max vara ${MAX_BIO_LENGTH} tecken` }, { status: 400 })
@@ -61,7 +67,7 @@ export async function PATCH(request: Request) {
   const updated = await prisma.user.update({
     where: { id: user.userId },
     data,
-    select: { id: true, name: true, bio: true, usernameChangesCount: true, currentWeight: true },
+    select: { id: true, name: true, bio: true, usernameChangesCount: true, currentWeight: true, fullName: true },
   })
 
   await logAudit({

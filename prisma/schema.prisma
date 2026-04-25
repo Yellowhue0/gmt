@@ -47,6 +47,7 @@ model User {
   lockedReason         String?
   lockedAt             DateTime?
   lockedBy             String?
+  fullName           String?
   fighterCardNumber  String?
   fighterCardExpiry  DateTime?
   weightClass        String?
@@ -68,6 +69,7 @@ model User {
   assignedSessions   SessionAssignedTrainer[]
   children           ChildMember[]             @relation("ParentChildren")
   competitionEntries FighterCompetitionEntry[] @relation("FighterEntries")
+  eventComments      EventComment[]            @relation("EventCommentAuthor")
 }
 
 model ChildMember {
@@ -186,6 +188,7 @@ model Event {
 
   attendees          EventAttendee[]
   competitionEntries FighterCompetitionEntry[]
+  comments           EventComment[]
 }
 
 model EventAttendee {
@@ -245,4 +248,18 @@ model Comment {
   author    User     @relation(fields: [authorId], references: [id])
   content   String
   createdAt DateTime @default(now())
+}
+
+model EventComment {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("EventCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  parentId  String?
+  parent    EventComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   EventComment[] @relation("CommentReplies")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

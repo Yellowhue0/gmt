@@ -46,6 +46,7 @@ type PendingMember = {
 type Member = {
   id: string
   name: string
+  fullName?: string | null
   email: string
   role: string
   swishNumber: string | null
@@ -266,8 +267,11 @@ export default function AdminDashboardPage() {
 
   const confirmed = members.filter(m => m.isConfirmed)
   const filtered = confirmed.filter(m => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.email.toLowerCase().includes(search.toLowerCase())
+    const q = search.toLowerCase()
+    const matchSearch = !q ||
+      m.name.toLowerCase().includes(q) ||
+      m.email.toLowerCase().includes(q) ||
+      (m.fullName ?? '').toLowerCase().includes(q)
     const matchPay =
       payFilter === 'all' ||
       (payFilter === 'paid' && m.membershipPaid) ||

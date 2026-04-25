@@ -24,6 +24,7 @@ type UserProfile = {
   phone: string | null
   createdAt: string
   currentWeight: number | null
+  fullName: string | null
 }
 
 type Toast = { type: 'success' | 'error'; message: string }
@@ -136,6 +137,7 @@ export default function ProfilePage() {
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
   const [weight, setWeight] = useState('')
+  const [fullName, setFullName] = useState('')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<Toast | null>(null)
   const { t } = useLanguage()
@@ -150,7 +152,7 @@ export default function ProfilePage() {
       .then(r => r.json())
       .then(d => {
         const u = d.data as UserProfile | null
-        if (u) { setProfile(u); setName(u.name); setBio(u.bio ?? ''); setWeight(u.currentWeight?.toString() ?? '') }
+        if (u) { setProfile(u); setName(u.name); setBio(u.bio ?? ''); setWeight(u.currentWeight?.toString() ?? ''); setFullName(u.fullName ?? '') }
         setLoading(false)
       })
   }, [])
@@ -182,6 +184,24 @@ export default function ProfilePage() {
   const showToast = (type: Toast['type'], message: string) => {
     setToast({ type, message })
     setTimeout(() => setToast(null), 3500)
+  }
+
+  const saveFullName = async () => {
+    if (!profile || fullName.trim() === (profile.fullName ?? '')) return
+    setSaving(true)
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: fullName.trim() || null }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setProfile(prev => prev ? { ...prev, fullName: data.data.fullName } : prev)
+      showToast('success', t('prof_fullname_saved'))
+    } else {
+      showToast('error', data.error ?? t('prof_error'))
+    }
+    setSaving(false)
   }
 
   const saveWeight = async () => {
@@ -371,6 +391,27 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Full name */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-5">
+        <h2 className="text-xs text-zinc-500 uppercase tracking-wider mb-1">{t('prof_fullname_label')}</h2>
+        <p className="text-zinc-600 text-xs mb-4">{t('prof_fullname_hint')}</p>
+        <div className="flex gap-3">
+          <input
+            value={fullName}
+            onChange={e => setFullName(e.target.value)}
+            placeholder="—"
+            className="flex-1 bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-brand"
+          />
+          <button
+            onClick={saveFullName}
+            disabled={saving || fullName.trim() === (profile.fullName ?? '')}
+            className="px-4 py-2.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {t('prof_save')}
+          </button>
+        </div>
       </div>
 
       {/* Bio */}

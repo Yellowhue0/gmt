@@ -26,6 +26,7 @@ export async function GET() {
       isLocked: true,
       lockedReason: true,
       currentWeight: true,
+      fullName: true,
     },
   })
 

@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { MapPin, Calendar, Plus, Trash2, Pencil, Users, Check, X } from 'lucide-react'
+import { MapPin, Calendar, Plus, Trash2, Pencil, Users, Check, X, MessageCircle, ChevronDown, ChevronUp, Send } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
+import { formatRelative } from '@/lib/utils'
 
 type EventItem = {
   id: string
@@ -19,7 +20,16 @@ type EventItem = {
   attendees: { userId: string }[]
 }
 
-type CurrentUser = { role: string } | null
+type CommentAuthor = { id: string; name: string; fullName: string | null; avatarUrl: string | null }
+type EventComment = {
+  id: string
+  content: string
+  createdAt: string
+  author: CommentAuthor
+  replies: Array<{ id: string; content: string; createdAt: string; author: CommentAuthor }>
+}
+
+type CurrentUser = { id: string; role: string; name: string } | null
 
 const TYPE_COLORS: Record<string, string> = {
   COMPETITION: 'bg-brand/20 text-brand border border-brand/30',
@@ -48,6 +58,15 @@ export default function EventsPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [attendingLoading, setAttendingLoading] = useState<string | null>(null)
+
+  // Comments
+  const [commentsByEvent, setCommentsByEvent] = useState<Record<string, EventComment[]>>({})
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
+  const [commentText, setCommentText] = useState<Record<string, string>>({})
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState<Record<string, string>>({})
+  const [postingComment, setPostingComment] = useState(false)
+
   const { lang, t } = useLanguage()
 
   useEffect(() => {
@@ -55,11 +74,78 @@ export default function EventsPage() {
       fetch('/api/auth/me').then(r => r.json()),
       fetch('/api/events').then(r => r.json()),
     ]).then(([u, e]) => {
-      setUser(u.data)
+      setUser(u.data ?? null)
       setEvents(e.data ?? [])
       setLoading(false)
     })
   }, [])
+
+  const loadComments = async (eventId: string) => {
+    if (commentsByEvent[eventId]) return
+    const res = await fetch(`/api/events/${eventId}/comments`)
+    if (res.ok) {
+      const { data } = await res.json()
+      setCommentsByEvent(prev => ({ ...prev, [eventId]: data }))
+    }
+  }
+
+  const toggleComments = async (eventId: string) => {
+    if (expandedEvent === eventId) {
+      setExpandedEvent(null)
+    } else {
+      setExpandedEvent(eventId)
+      await loadComments(eventId)
+    }
+  }
+
+  const postComment = async (eventId: string, parentId?: string) => {
+    const text = parentId ? replyText[parentId] : commentText[eventId]
+    if (!text?.trim() || !user) return
+    setPostingComment(true)
+    const res = await fetch(`/api/events/${eventId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text.trim(), parentId: parentId ?? null }),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      if (parentId) {
+        setCommentsByEvent(prev => ({
+          ...prev,
+          [eventId]: prev[eventId].map(c =>
+            c.id === parentId ? { ...c, replies: [...c.replies, data] } : c
+          ),
+        }))
+        setReplyText(prev => ({ ...prev, [parentId]: '' }))
+        setReplyingTo(null)
+      } else {
+        setCommentsByEvent(prev => ({
+          ...prev,
+          [eventId]: [...(prev[eventId] ?? []), { ...data, replies: [] }],
+        }))
+        setCommentText(prev => ({ ...prev, [eventId]: '' }))
+      }
+    }
+    setPostingComment(false)
+  }
+
+  const deleteComment = async (eventId: string, commentId: string, parentId?: string) => {
+    const res = await fetch(`/api/events/${eventId}/comments/${commentId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setCommentsByEvent(prev => {
+        const list = prev[eventId] ?? []
+        if (parentId) {
+          return {
+            ...prev,
+            [eventId]: list.map(c =>
+              c.id === parentId ? { ...c, replies: c.replies.filter(r => r.id !== commentId) } : c
+            ),
+          }
+        }
+        return { ...prev, [eventId]: list.filter(c => c.id !== commentId) }
+      })
+    }
+  }
 
   const canManage = user?.role === 'ADMIN' || user?.role === 'TRAINER'
   const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
@@ -330,11 +416,21 @@ export default function EventsPage() {
                     <p className="text-zinc-500 text-sm mb-3 leading-relaxed">{ev.description}</p>
                   )}
 
-                  {/* Attendance row */}
+                  {/* Attendance + comments row */}
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800">
-                    <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
-                      <Users size={12} />
-                      {attendeeCount} {t('ev_attendees')}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5 text-zinc-500 text-xs">
+                        <Users size={12} />
+                        {attendeeCount} {t('ev_attendees')}
+                      </div>
+                      <button
+                        onClick={() => toggleComments(ev.id)}
+                        className="flex items-center gap-1 text-zinc-500 hover:text-zinc-300 text-xs transition-colors"
+                      >
+                        <MessageCircle size={12} />
+                        {t('ev_comments')}
+                        {expandedEvent === ev.id ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                      </button>
                     </div>
 
                     {user ? (
@@ -352,6 +448,132 @@ export default function EventsPage() {
                       </button>
                     ) : null}
                   </div>
+
+                  {/* Comment section */}
+                  {expandedEvent === ev.id && (
+                    <div className="mt-4 pt-4 border-t border-zinc-800">
+                      {/* Comment list */}
+                      {!commentsByEvent[ev.id] ? (
+                        <p className="text-zinc-600 text-xs py-2">Laddar...</p>
+                      ) : commentsByEvent[ev.id].length === 0 ? (
+                        <p className="text-zinc-600 text-xs pb-3">{t('ev_no_comments')}</p>
+                      ) : (
+                        <div className="space-y-3 mb-4">
+                          {commentsByEvent[ev.id].map(comment => (
+                            <div key={comment.id}>
+                              {/* Top-level comment */}
+                              <div className="flex gap-2.5">
+                                <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-300 shrink-0">
+                                  {(comment.author.fullName ?? comment.author.name).charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="bg-zinc-800/60 rounded-xl px-3 py-2">
+                                    <p className="text-xs font-semibold text-zinc-300 mb-0.5">
+                                      {comment.author.fullName ?? comment.author.name}
+                                    </p>
+                                    <p className="text-xs text-zinc-400 break-words">{comment.content}</p>
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-1 ml-1">
+                                    <span className="text-[10px] text-zinc-600">{formatRelative(comment.createdAt)}</span>
+                                    {user && (
+                                      <button
+                                        onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                                        className="text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
+                                      >
+                                        {t('ev_comment_reply')}
+                                      </button>
+                                    )}
+                                    {user && (user.id === comment.author.id || user.role === 'ADMIN') && (
+                                      <button
+                                        onClick={() => deleteComment(ev.id, comment.id)}
+                                        className="text-[10px] text-zinc-700 hover:text-red-400 transition-colors"
+                                      >
+                                        {t('ev_comment_delete')}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Reply input */}
+                                  {replyingTo === comment.id && user && (
+                                    <div className="flex gap-2 mt-2">
+                                      <input
+                                        value={replyText[comment.id] ?? ''}
+                                        onChange={e => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(ev.id, comment.id) } }}
+                                        placeholder={t('ev_reply_ph')}
+                                        className="flex-1 bg-zinc-800 border border-zinc-700 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+                                      />
+                                      <button
+                                        onClick={() => postComment(ev.id, comment.id)}
+                                        disabled={postingComment || !replyText[comment.id]?.trim()}
+                                        className="p-1.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white rounded-lg transition-colors"
+                                      >
+                                        <Send size={12} />
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {/* Replies */}
+                                  {comment.replies.length > 0 && (
+                                    <div className="ml-4 mt-2 space-y-2">
+                                      {comment.replies.map(reply => (
+                                        <div key={reply.id} className="flex gap-2">
+                                          <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-400 shrink-0">
+                                            {(reply.author.fullName ?? reply.author.name).charAt(0).toUpperCase()}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="bg-zinc-800/40 rounded-xl px-3 py-1.5">
+                                              <p className="text-[10px] font-semibold text-zinc-400 mb-0.5">
+                                                {reply.author.fullName ?? reply.author.name}
+                                              </p>
+                                              <p className="text-xs text-zinc-500 break-words">{reply.content}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-0.5 ml-1">
+                                              <span className="text-[10px] text-zinc-700">{formatRelative(reply.createdAt)}</span>
+                                              {user && (user.id === reply.author.id || user.role === 'ADMIN') && (
+                                                <button
+                                                  onClick={() => deleteComment(ev.id, reply.id, comment.id)}
+                                                  className="text-[10px] text-zinc-700 hover:text-red-400 transition-colors"
+                                                >
+                                                  {t('ev_comment_delete')}
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* New comment input */}
+                      {user ? (
+                        <div className="flex gap-2">
+                          <input
+                            value={commentText[ev.id] ?? ''}
+                            onChange={e => setCommentText(prev => ({ ...prev, [ev.id]: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(ev.id) } }}
+                            placeholder={t('ev_comment_ph')}
+                            className="flex-1 bg-zinc-800 border border-zinc-700 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-brand"
+                          />
+                          <button
+                            onClick={() => postComment(ev.id)}
+                            disabled={postingComment || !commentText[ev.id]?.trim()}
+                            className="p-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white rounded-lg transition-colors"
+                          >
+                            <Send size={13} />
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-600 text-center py-2">{t('ev_comment_login')}</p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Admin/Trainer actions */}
                   {canManage && (
