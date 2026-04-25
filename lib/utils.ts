@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { type TranslationKey } from '@/lib/i18n'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -37,9 +38,9 @@ export function formatRelative(date: string | Date): string {
   return formatDate(d)
 }
 
-export function getSessionTypeLabel(type: string, t?: (key: string) => string): string {
+export function getSessionTypeLabel(type: string, t?: (key: TranslationKey) => string): string {
   if (t) {
-    const keyMap: Record<string, string> = {
+    const keyMap: Record<string, TranslationKey> = {
       regular: 'type_regular',
       sparring: 'type_sparring',
       youth: 'type_youth',
@@ -47,7 +48,7 @@ export function getSessionTypeLabel(type: string, t?: (key: string) => string): 
       girls: 'type_girls',
     }
     const key = keyMap[type]
-    if (key) return t(key as never)
+    if (key) return t(key)
   }
   const labels: Record<string, string> = {
     regular: 'Träning',
