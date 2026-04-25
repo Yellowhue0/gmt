@@ -78,6 +78,7 @@ export default function Navbar() {
   const navLinks = [
     { href: '/', label: t('nav_home') },
     { href: '/schema', label: t('nav_schedule') },
+    { href: '/membership', label: t('nav_membership') },
     { href: '/events', label: t('nav_events') },
     { href: '/community', label: t('nav_community') },
   ]
