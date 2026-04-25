@@ -26,8 +26,10 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               {[
                 { href: '/schema', label: t('foot_schedule') },
+                { href: '/membership', label: t('nav_membership') },
                 { href: '/events', label: t('foot_events') },
                 { href: '/community', label: t('foot_community') },
+                { href: '/contact', label: t('nav_contact') },
                 { href: '/register', label: t('foot_join') },
               ].map(({ href, label }) => (
                 <li key={href}>
@@ -42,6 +44,16 @@ export default function Footer() {
           <div>
             <h3 className="text-brand font-semibold mb-3 text-sm uppercase tracking-wider">{t('foot_contact')}</h3>
             <ul className="space-y-2 text-sm text-zinc-400">
+              <li>
+                <a
+                  href="http://www.thaibox.se"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  thaibox.se
+                </a>
+              </li>
               <li>{t('foot_location')}</li>
               <li>
                 <a
@@ -67,8 +79,13 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-zinc-900 text-center text-xs text-zinc-600">
-          {t('foot_copyright').replace('{year}', String(new Date().getFullYear()))}
+        <div className="mt-10 pt-6 border-t border-zinc-900 space-y-2 text-center">
+          <p className="text-xs text-zinc-600">
+            {t('foot_copyright').replace('{year}', String(new Date().getFullYear()))}
+          </p>
+          <p className="text-[10px] text-zinc-700 tracking-wide">
+            {t('foot_seo')}
+          </p>
         </div>
       </div>
     </footer>

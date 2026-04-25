@@ -81,6 +81,7 @@ export default function Navbar() {
     { href: '/membership', label: t('nav_membership') },
     { href: '/events', label: t('nav_events') },
     { href: '/community', label: t('nav_community') },
+    { href: '/contact', label: t('nav_contact') },
   ]
 
   return (

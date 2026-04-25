@@ -210,6 +210,69 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
+      {/* Find Us */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-zinc-800">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-white mb-10 text-center" style={{ fontFamily: 'var(--font-display)' }}>
+            {t('home_location_title')}
+          </h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* Map */}
+            <div className="lg:col-span-2 rounded-xl overflow-hidden border border-zinc-800 shadow-lg shadow-black/40">
+              <iframe
+                src="https://maps.google.com/maps?q=Glommens+Thaiboxningsklubb+Falkenberg+Sweden&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                width="100%"
+                height="380"
+                style={{ border: 0, display: 'block' }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Glommens Thaiboxningsklubb"
+              />
+            </div>
+
+            {/* Info panel */}
+            <div className="flex flex-col gap-5">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">{t('contact_address_label')}</p>
+                <p className="text-white font-semibold">Glommens Thaiboxningsklubb</p>
+                <p className="text-zinc-400 text-sm mt-0.5">{t('home_location_address')}</p>
+              </div>
+
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">{t('contact_website_label')}</p>
+                <a
+                  href="http://www.thaibox.se"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:text-brand-hover transition-colors text-sm font-medium"
+                >
+                  {t('home_location_website')}
+                </a>
+              </div>
+
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <p className="text-zinc-500 text-xs uppercase tracking-widest mb-1">{t('home_location_hours')}</p>
+                <p className="text-zinc-400 text-sm">{t('home_location_hours_note')}</p>
+                <Link href="/schema" className="text-brand hover:text-brand-hover text-sm mt-2 inline-block transition-colors">
+                  {t('contact_schedule_link')} →
+                </Link>
+              </div>
+
+              <a
+                href="https://www.google.com/maps/dir/?api=1&destination=Glommens+Thaiboxningsklubb+Falkenberg+Sweden"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                {t('home_location_directions')}
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

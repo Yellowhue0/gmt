@@ -372,7 +372,25 @@ const translations = {
     foot_contact: 'Kontakt & Sociala medier',
     foot_location: 'Falkenberg, Sverige',
     foot_facebook: 'Facebook-grupp',
+    foot_instagram: 'Instagram',
     foot_copyright: '© {year} GLOMMENS MUAY THAI. Alla rättigheter förbehållna.',
+    foot_seo: 'Glommens Thaiboxningsklubb | Muay Thai Falkenberg | Falkenberg Muay Thai | Thaiboxning Falkenberg',
+
+    // Contact / location page + home "Find Us" section
+    nav_contact: 'Kontakt',
+    home_location_title: 'Hitta Hit',
+    home_location_address: '311 42, Falkenberg, Sverige',
+    home_location_website: 'www.thaibox.se',
+    home_location_directions: 'Vägbeskrivning i Google Maps',
+    home_location_hours: 'Öppettider',
+    home_location_hours_note: 'Kontakta oss eller se schemat för aktuella träningstider.',
+    contact_page_title: 'Kontakt & Hitta Hit',
+    contact_page_sub: 'Glommens Thaiboxningsklubb – Falkenberg, Sverige',
+    contact_address_label: 'Adress',
+    contact_website_label: 'Webbplats',
+    contact_hours_title: 'Öppettider & Träning',
+    contact_hours_note: 'Besök vår sida eller kontakta oss för att se aktuellt träningsschema och tider.',
+    contact_schedule_link: 'Se träningsschema',
 
     // Days
     day_0: 'Söndag', day_1: 'Måndag', day_2: 'Tisdag', day_3: 'Onsdag',
@@ -993,7 +1011,25 @@ const translations = {
     foot_contact: 'Contact & Social Media',
     foot_location: 'Falkenberg, Sweden',
     foot_facebook: 'Facebook group',
+    foot_instagram: 'Instagram',
     foot_copyright: '© {year} GLOMMENS MUAY THAI. All rights reserved.',
+    foot_seo: 'Glommens Thaiboxningsklubb | Muay Thai Falkenberg | Falkenberg Muay Thai | Thaiboxning Falkenberg',
+
+    // Contact / location page + home "Find Us" section
+    nav_contact: 'Contact',
+    home_location_title: 'Find Us',
+    home_location_address: '311 42, Falkenberg, Sweden',
+    home_location_website: 'www.thaibox.se',
+    home_location_directions: 'Get Directions in Google Maps',
+    home_location_hours: 'Opening Hours',
+    home_location_hours_note: 'Contact us or check the schedule for current training times.',
+    contact_page_title: 'Contact & Location',
+    contact_page_sub: 'Glommens Thaiboxningsklubb – Falkenberg, Sweden',
+    contact_address_label: 'Address',
+    contact_website_label: 'Website',
+    contact_hours_title: 'Opening Hours & Training',
+    contact_hours_note: 'Visit our website or contact us for the current training schedule and times.',
+    contact_schedule_link: 'View training schedule',
 
     // Days
     day_0: 'Sunday', day_1: 'Monday', day_2: 'Tuesday', day_3: 'Wednesday',
