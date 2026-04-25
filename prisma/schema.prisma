@@ -47,19 +47,27 @@ model User {
   lockedReason         String?
   lockedAt             DateTime?
   lockedBy             String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  fighterCardNumber  String?
+  fighterCardExpiry  DateTime?
+  weightClass        String?
+  currentWeight      Float?
+  wins               Int       @default(0)
+  losses             Int       @default(0)
+  draws              Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  checkIns          CheckIn[]
-  posts             Post[]
-  comments          Comment[]
-  sessions          GymSession[]             @relation("TrainerSessions")
-  notifications     Notification[]
-  eventAttendees    EventAttendee[]
-  createdEvents     Event[]                  @relation("EventCreator")
-  confirmedSessions SessionConfirmedTrainer[]
-  assignedSessions  SessionAssignedTrainer[]
-  children          ChildMember[]            @relation("ParentChildren")
+  checkIns           CheckIn[]
+  posts              Post[]
+  comments           Comment[]
+  sessions           GymSession[]              @relation("TrainerSessions")
+  notifications      Notification[]
+  eventAttendees     EventAttendee[]
+  createdEvents      Event[]                   @relation("EventCreator")
+  confirmedSessions  SessionConfirmedTrainer[]
+  assignedSessions   SessionAssignedTrainer[]
+  children           ChildMember[]             @relation("ParentChildren")
+  competitionEntries FighterCompetitionEntry[] @relation("FighterEntries")
 }
 
 model ChildMember {
@@ -176,7 +184,8 @@ model Event {
   createdBy   User?    @relation("EventCreator", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
-  attendees EventAttendee[]
+  attendees          EventAttendee[]
+  competitionEntries FighterCompetitionEntry[]
 }
 
 model EventAttendee {
@@ -188,6 +197,21 @@ model EventAttendee {
   createdAt DateTime @default(now())
 
   @@unique([eventId, userId])
+}
+
+model FighterCompetitionEntry {
+  id            String   @id @default(cuid())
+  fighterId     String
+  fighter       User     @relation("FighterEntries", fields: [fighterId], references: [id], onDelete: Cascade)
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  weightAtEntry Float?
+  opponent      String?
+  result        String?
+  notes         String?
+  enteredBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model AuditLog {

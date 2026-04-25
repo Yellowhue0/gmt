@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, Clock, Users, ShieldAlert } from 'lucide-react'
+import Link from 'next/link'
+import { CheckCircle2, XCircle, Clock, Users, ShieldAlert, Sword, AlertTriangle, Calendar } from 'lucide-react'
 import { formatDate, SWISH_NUMBER, MEMBERSHIP_PRICE, getSessionTypeLabel } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import type { TranslationKey } from '@/lib/i18n'
@@ -23,6 +24,16 @@ type Child = {
   isConfirmed: boolean
   membershipPaid: boolean
   membershipEnd: string | null
+}
+
+type FighterData = {
+  wins: number
+  losses: number
+  draws: number
+  fighterCardExpiry: string | null
+  competitionEntries: {
+    event: { title: string; date: string }
+  }[]
 }
 
 type ConfirmedTrainer = { user: { id: string; name: string } }
@@ -60,6 +71,7 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [children, setChildren] = useState<Child[]>([])
   const [childCheckIns, setChildCheckIns] = useState<Record<string, string[]>>({})
+  const [fighterData, setFighterData] = useState<FighterData | null>(null)
   const [loading, setLoading] = useState(true)
   const { t } = useLanguage()
 
@@ -72,6 +84,9 @@ export default function DashboardPage() {
       setSessions(s.data ?? [])
       if (u.data?.role === 'PARENT') {
         fetch('/api/children').then(r => r.json()).then(c => setChildren(c.data ?? []))
+      }
+      if (u.data?.role === 'FIGHTER') {
+        fetch(`/api/fighters/${u.data.id}`).then(r => r.json()).then(d => setFighterData(d.data ?? null))
       }
       setLoading(false)
     })
@@ -210,6 +225,69 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Fighter widget — FIGHTER only */}
+      {user.role === 'FIGHTER' && fighterData && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Sword size={18} className="text-brand" /> {t('dash_fighter_section')}
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {/* Record */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">{t('dash_fighter_record')}</p>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-bold text-green-400">{fighterData.wins}W</span>
+                <span className="text-zinc-700">·</span>
+                <span className="text-2xl font-bold text-red-400">{fighterData.losses}L</span>
+                <span className="text-zinc-700">·</span>
+                <span className="text-2xl font-bold text-yellow-500">{fighterData.draws}D</span>
+              </div>
+            </div>
+
+            {/* Next fight */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-1"><Calendar size={11} /> {t('dash_fighter_next')}</p>
+              {(() => {
+                const next = fighterData.competitionEntries.find(e => new Date(e.event.date) >= new Date())
+                return next ? (
+                  <div>
+                    <p className="text-white text-sm font-semibold">{next.event.title}</p>
+                    <p className="text-zinc-500 text-xs mt-0.5">{formatDate(new Date(next.event.date))}</p>
+                  </div>
+                ) : (
+                  <p className="text-zinc-600 text-sm">{t('dash_fighter_no_next')}</p>
+                )
+              })()}
+            </div>
+
+            {/* Card status */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">{t('fight_card_label')}</p>
+              {!fighterData.fighterCardExpiry ? (
+                <p className="text-zinc-600 text-sm">{t('dash_fighter_no_card')}</p>
+              ) : (() => {
+                const daysLeft = (new Date(fighterData.fighterCardExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                return daysLeft <= 30 ? (
+                  <p className={`text-sm flex items-center gap-1.5 ${daysLeft < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
+                    <AlertTriangle size={13} />
+                    {t('dash_fighter_card_expiry')}: {formatDate(new Date(fighterData.fighterCardExpiry))}
+                  </p>
+                ) : (
+                  <p className="text-green-400 text-sm flex items-center gap-1.5">
+                    <CheckCircle2 size={13} /> {t('fight_card_valid')} · {formatDate(new Date(fighterData.fighterCardExpiry))}
+                  </p>
+                )
+              })()}
+            </div>
+          </div>
+          <div className="mt-3">
+            <Link href="/dashboard/fighter/profile" className="text-sm text-brand hover:text-brand-hover transition-colors">
+              {t('dash_fighter_profile')} →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Children section — PARENT only */}
       {user.role === 'PARENT' && (

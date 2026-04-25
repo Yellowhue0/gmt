@@ -174,6 +174,11 @@ export default function Navbar() {
                     {t('nav_trainer_view')}
                   </Link>
                 )}
+                {isStaff && (
+                  <Link href="/dashboard/admin/fighters" className="text-sm text-zinc-400 hover:text-white transition-colors">
+                    {t('nav_fighters')}
+                  </Link>
+                )}
                 {isFinance && (
                   <Link href="/dashboard/finance" className="text-sm text-zinc-400 hover:text-white transition-colors">
                     {t('nav_finance')}
@@ -245,6 +250,11 @@ export default function Navbar() {
                   {isStaff && (
                     <Link href="/dashboard/trainer" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
                       {t('nav_trainer_view')}
+                    </Link>
+                  )}
+                  {isStaff && (
+                    <Link href="/dashboard/admin/fighters" onClick={() => setOpen(false)} className="block px-2 py-2 text-zinc-300 hover:text-white text-sm">
+                      {t('nav_fighters')}
                     </Link>
                   )}
                   {isFinance && (

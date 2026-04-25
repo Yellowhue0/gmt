@@ -13,6 +13,10 @@ export type AuditAction =
   | 'MEMBER_REJECTED'
   | 'ACCOUNT_LOCKED'
   | 'ACCOUNT_UNLOCKED'
+  | 'FIGHTER_UPDATED'
+  | 'COMPETITION_ENTRY_ADDED'
+  | 'COMPETITION_ENTRY_UPDATED'
+  | 'COMPETITION_ENTRY_REMOVED'
 
 interface LogOptions {
   action: AuditAction

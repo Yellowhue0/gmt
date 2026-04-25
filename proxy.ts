@@ -36,7 +36,21 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    if (pathname.startsWith('/dashboard/admin') && payload.role !== 'ADMIN') {
+    // Fighters management: ADMIN or TRAINER
+    if (
+      pathname.startsWith('/dashboard/admin/fighters') &&
+      payload.role !== 'ADMIN' &&
+      payload.role !== 'TRAINER'
+    ) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // Other admin pages: ADMIN only
+    if (
+      pathname.startsWith('/dashboard/admin') &&
+      !pathname.startsWith('/dashboard/admin/fighters') &&
+      payload.role !== 'ADMIN'
+    ) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
@@ -44,6 +58,14 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith('/dashboard/trainer') &&
       payload.role !== 'TRAINER' &&
       payload.role !== 'ADMIN'
+    ) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // Fighter profile: FIGHTER, TRAINER, or ADMIN
+    if (
+      pathname.startsWith('/dashboard/fighter') &&
+      !['FIGHTER', 'TRAINER', 'ADMIN'].includes(payload.role as string)
     ) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
