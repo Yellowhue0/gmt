@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Camera, CheckCircle2, AlertCircle, User } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Camera, CheckCircle2, AlertCircle, User, Flame, Trophy, Star, Calendar } from 'lucide-react'
 import RoleBadge from '@/components/RoleBadge'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { formatDate } from '@/lib/utils'
@@ -26,6 +26,108 @@ type UserProfile = {
 
 type Toast = { type: 'success' | 'error'; message: string }
 
+type Stats = {
+  total: number
+  thisWeek: number
+  thisMonth: number
+  longestStreak: number
+  currentStreak: number
+  favoriteClass: string | null
+  firstCheckIn: string | null
+}
+
+type WeekActivity = { monday: string; count: number; label: string }
+
+type CheckInItem = {
+  id: string
+  date: string
+  session: {
+    name: string
+    startTime: string
+    endTime: string
+    trainer: { name: string } | null
+  }
+}
+
+type HistoryData = {
+  stats: Stats
+  weeklyActivity: WeekActivity[]
+  availableMonths: string[]
+  history: { items: CheckInItem[]; total: number; page: number; pages: number }
+}
+
+// ── Activity bar chart ──────────────────────────────────────────────────────
+
+function ActivityChart({ weeks, t }: { weeks: WeekActivity[]; t: (k: string) => string }) {
+  const max = Math.max(...weeks.map(w => w.count), 1)
+  return (
+    <div>
+      <div className="flex items-end gap-1.5 h-20">
+        {weeks.map(w => {
+          const pct = w.count === 0 ? 4 : Math.max(12, Math.round((w.count / max) * 100))
+          const intensity = w.count === 0 ? 0 : 0.25 + (w.count / max) * 0.75
+          return (
+            <div key={w.monday} className="flex-1 flex flex-col items-center gap-1 h-full" title={`${w.label}: ${w.count} ${t('prof_checkin_count')}`}>
+              <div className="flex-1 w-full flex items-end">
+                <div
+                  className="w-full rounded-sm transition-all duration-300"
+                  style={{
+                    height: `${pct}%`,
+                    backgroundColor: w.count === 0
+                      ? '#27272a'
+                      : `rgba(161, 30, 0, ${intensity})`,
+                  }}
+                />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {/* Week labels — show only every 3rd to avoid cramping */}
+      <div className="flex gap-1.5 mt-1.5">
+        {weeks.map((w, i) => (
+          <div key={w.monday} className="flex-1 text-center">
+            {i % 3 === 0 && (
+              <span className="text-[9px] text-zinc-600 block truncate">{w.label}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Stat card ───────────────────────────────────────────────────────────────
+
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string | number
+  sub?: string
+  accent?: boolean
+}) {
+  return (
+    <div className={`rounded-xl border p-4 flex flex-col gap-2 ${accent ? 'border-brand/50 bg-brand/5' : 'border-zinc-800 bg-zinc-900'}`}>
+      <div className="flex items-center gap-2 text-zinc-500">
+        {icon}
+        <span className="text-xs uppercase tracking-wider">{label}</span>
+      </div>
+      <div>
+        <span className={`text-2xl font-bold ${accent ? 'text-brand' : 'text-white'}`}>{value}</span>
+        {sub && <span className="text-zinc-500 text-xs ml-1.5">{sub}</span>}
+      </div>
+    </div>
+  )
+}
+
+// ── Main page ───────────────────────────────────────────────────────────────
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -35,19 +137,44 @@ export default function ProfilePage() {
   const [toast, setToast] = useState<Toast | null>(null)
   const { t } = useLanguage()
 
+  const [histData, setHistData] = useState<HistoryData | null>(null)
+  const [histLoading, setHistLoading] = useState(true)
+  const [histPage, setHistPage] = useState(1)
+  const [monthFilter, setMonthFilter] = useState<string>('')
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.json())
       .then(d => {
         const u = d.data as UserProfile | null
-        if (u) {
-          setProfile(u)
-          setName(u.name)
-          setBio(u.bio ?? '')
-        }
+        if (u) { setProfile(u); setName(u.name); setBio(u.bio ?? '') }
         setLoading(false)
       })
   }, [])
+
+  const loadStats = useCallback((page: number, month: string) => {
+    setHistLoading(true)
+    const params = new URLSearchParams({ page: String(page) })
+    if (month) params.set('month', month)
+    fetch(`/api/profile/stats?${params}`)
+      .then(r => r.json())
+      .then(d => { if (d.data) setHistData(d.data) })
+      .catch(() => {})
+      .finally(() => setHistLoading(false))
+  }, [])
+
+  useEffect(() => { loadStats(1, '') }, [loadStats])
+
+  const applyFilter = (month: string) => {
+    setMonthFilter(month)
+    setHistPage(1)
+    loadStats(1, month)
+  }
+
+  const goPage = (p: number) => {
+    setHistPage(p)
+    loadStats(p, monthFilter)
+  }
 
   const showToast = (type: Toast['type'], message: string) => {
     setToast({ type, message })
@@ -96,6 +223,7 @@ export default function ProfilePage() {
   const changesLeft = MAX_NAME_CHANGES - profile.usernameChangesCount
   const nameReadOnly = changesLeft <= 0
   const expiry = profile.membershipEnd ? new Date(profile.membershipEnd) : null
+  const stats = histData?.stats
 
   const ROLE_LABEL: Record<string, string> = {
     ADMIN: t('adm_role_admin'),
@@ -107,6 +235,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
+
       {/* Toast */}
       {toast && (
         <div className={`fixed top-20 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl text-sm font-medium transition-all ${
@@ -222,7 +351,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Bio */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-5">
         <h2 className="text-xs text-zinc-500 uppercase tracking-wider mb-1">{t('prof_bio_label')}</h2>
         <p className="text-zinc-600 text-xs mb-4">{t('prof_bio_hint')}</p>
         <textarea
@@ -244,6 +373,154 @@ export default function ProfilePage() {
             {t('prof_save')}
           </button>
         </div>
+      </div>
+
+      {/* ── Training Statistics ─────────────────────────────────────── */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-5">
+        <h2 className="text-xs text-zinc-500 uppercase tracking-wider mb-5">{t('prof_stats_title')}</h2>
+
+        {histLoading && !histData ? (
+          <p className="text-zinc-600 text-sm">{t('prof_history_loading')}</p>
+        ) : stats && stats.total > 0 ? (
+          <>
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <StatCard
+                icon={<Trophy size={13} />}
+                label={t('prof_stats_total')}
+                value={stats.total}
+                sub={t('prof_checkin_count')}
+                accent
+              />
+              <StatCard
+                icon={<Calendar size={13} />}
+                label={t('prof_stats_month')}
+                value={stats.thisMonth}
+              />
+              <StatCard
+                icon={<Calendar size={13} />}
+                label={t('prof_stats_week')}
+                value={stats.thisWeek}
+              />
+              <StatCard
+                icon={<Flame size={13} />}
+                label={t('prof_stats_streak_current')}
+                value={stats.currentStreak}
+                sub={t('prof_stats_weeks')}
+                accent={stats.currentStreak > 0}
+              />
+            </div>
+
+            {/* Secondary stats */}
+            <div className="space-y-2 text-sm mb-6">
+              <div className="flex justify-between items-center py-2 border-b border-zinc-800">
+                <span className="text-zinc-500 flex items-center gap-2">
+                  <Trophy size={12} />
+                  {t('prof_stats_streak_best')}
+                </span>
+                <span className="text-white font-medium">{stats.longestStreak} {t('prof_stats_weeks')}</span>
+              </div>
+              {stats.favoriteClass && (
+                <div className="flex justify-between items-center py-2 border-b border-zinc-800">
+                  <span className="text-zinc-500 flex items-center gap-2">
+                    <Star size={12} />
+                    {t('prof_stats_fav')}
+                  </span>
+                  <span className="text-white font-medium truncate max-w-[55%] text-right">{stats.favoriteClass}</span>
+                </div>
+              )}
+              {stats.firstCheckIn && (
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-zinc-500 flex items-center gap-2">
+                    <Calendar size={12} />
+                    {t('prof_stats_first')}
+                  </span>
+                  <span className="text-zinc-400">{formatDate(stats.firstCheckIn)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Activity chart */}
+            {histData && histData.weeklyActivity.length > 0 && (
+              <div>
+                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">{t('prof_activity_title')}</p>
+                <ActivityChart weeks={histData.weeklyActivity} t={t} />
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-zinc-600 text-sm">{t('prof_stats_none')}</p>
+        )}
+      </div>
+
+      {/* ── Session History ─────────────────────────────────────────── */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <h2 className="text-xs text-zinc-500 uppercase tracking-wider">{t('prof_history_title')}</h2>
+
+          {histData && histData.availableMonths.length > 0 && (
+            <select
+              value={monthFilter}
+              onChange={e => applyFilter(e.target.value)}
+              className="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand"
+            >
+              <option value="">{t('prof_history_all')}</option>
+              {histData.availableMonths.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {histLoading ? (
+          <p className="text-zinc-600 text-sm py-4">{t('prof_history_loading')}</p>
+        ) : !histData || histData.history.items.length === 0 ? (
+          <p className="text-zinc-600 text-sm py-4">{t('prof_history_empty')}</p>
+        ) : (
+          <>
+            <div className="divide-y divide-zinc-800">
+              {histData.history.items.map(item => (
+                <div key={item.id} className="py-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium">{item.session.name}</p>
+                    <p className="text-zinc-500 text-xs mt-0.5">
+                      {formatDate(item.date)} · {item.session.startTime}–{item.session.endTime}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-zinc-600 text-xs">{t('prof_history_trainer')}</p>
+                    <p className="text-zinc-400 text-xs mt-0.5">
+                      {item.session.trainer?.name ?? t('prof_history_no_trainer')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {histData.history.pages > 1 && (
+              <div className="flex items-center justify-between pt-4 border-t border-zinc-800 mt-2">
+                <button
+                  onClick={() => goPage(histPage - 1)}
+                  disabled={histPage <= 1}
+                  className="text-xs text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  {t('prof_history_prev')}
+                </button>
+                <span className="text-xs text-zinc-600">
+                  {t('prof_history_page')} {histData.history.page} {t('prof_history_of')} {histData.history.pages}
+                </span>
+                <button
+                  onClick={() => goPage(histPage + 1)}
+                  disabled={histPage >= histData.history.pages}
+                  className="text-xs text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  {t('prof_history_next')}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
