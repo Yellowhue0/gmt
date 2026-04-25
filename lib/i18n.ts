@@ -18,6 +18,7 @@ const translations = {
     nav_mark_read: 'Markera alla som lästa',
     nav_my_page: 'Min sida',
     nav_profile: 'Profil',
+    nav_fighter_profile: 'Fighterprofil',
 
     // Home
     home_badge: 'Falkenberg · Sedan 2010',
@@ -662,6 +663,7 @@ const translations = {
     nav_join: 'Join',
     nav_my_page: 'My Page',
     nav_profile: 'Profile',
+    nav_fighter_profile: 'Fighter Profile',
 
     // Home
     home_badge: 'Falkenberg · Since 2010',
