@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, Trophy, Medal, Star, Users, Flame, ChevronDown } from 'lucide-react'
+import { Search, Trophy, Medal, Star, Users, Flame, ChevronDown, Info } from 'lucide-react'
 import RoleBadge from '@/components/RoleBadge'
 
 type LeaderboardEntry = {
@@ -70,6 +70,7 @@ export default function LeaderboardPage() {
   const [allTime, setAllTime] = useState(false)
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null)
   const [showPastSeasons, setShowPastSeasons] = useState(false)
+  const [showPointsInfo, setShowPointsInfo] = useState(false)
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true)
@@ -111,6 +112,34 @@ export default function LeaderboardPage() {
         <p className="text-zinc-500">
           {data?.season ? data.season.name : 'All Time'} Rankings
         </p>
+      </div>
+
+      {/* Points info */}
+      <div className="mb-6 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowPointsInfo(v => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-zinc-400 hover:text-white transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <Info size={14} className="text-brand" />
+            How points are earned
+          </span>
+          <ChevronDown size={14} className={`transition-transform ${showPointsInfo ? 'rotate-180' : ''}`} />
+        </button>
+        {showPointsInfo && (
+          <div className="px-4 pb-4 grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm border-t border-zinc-800 pt-3">
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">Regular class</span><span className="text-white font-medium">+10 pts</span></div>
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">Sparring class</span><span className="text-white font-medium">+12 pts</span></div>
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">Fighters class</span><span className="text-white font-medium">+15 pts</span></div>
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">Competition entry</span><span className="text-white font-medium">+25 pts</span></div>
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">Fight loss</span><span className="text-white font-medium">+20 pts</span></div>
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">Fight draw</span><span className="text-white font-medium">+30 pts</span></div>
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">Fight win</span><span className="text-white font-medium">+50 pts</span></div>
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">4-week streak</span><span className="text-white font-medium">+20 pts</span></div>
+            <div className="flex justify-between gap-2"><span className="text-zinc-400">8-week streak</span><span className="text-white font-medium">+50 pts</span></div>
+            <div className="flex justify-between gap-2 col-span-2 sm:col-span-1"><span className="text-zinc-400">12-week streak</span><span className="text-white font-medium">+100 pts</span></div>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
