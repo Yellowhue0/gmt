@@ -11,11 +11,17 @@ export default function PendingApprovalPage() {
   const { t } = useLanguage()
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then(r => r.json())
-      .then(d => {
-        if (d.data?.isConfirmed) router.replace('/dashboard')
-      })
+    const check = () => {
+      fetch('/api/auth/me')
+        .then(r => r.json())
+        .then(d => {
+          if (d.data?.isConfirmed) router.replace('/dashboard')
+        })
+        .catch(() => {})
+    }
+    check()
+    const id = setInterval(check, 10_000)
+    return () => clearInterval(id)
   }, [router])
 
   const handleLogout = async () => {
