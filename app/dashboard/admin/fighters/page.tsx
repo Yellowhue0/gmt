@@ -11,6 +11,9 @@ const WEIGHT_CLASSES = [
   'Lightweight', 'Welterweight', 'Middleweight', 'Heavyweight',
 ]
 
+const WEIGHT_MIN = 40
+const WEIGHT_MAX = 120
+
 const RESULTS = ['', 'WIN', 'LOSS', 'DRAW', 'NO_CONTEST'] as const
 type ResultValue = '' | 'WIN' | 'LOSS' | 'DRAW' | 'NO_CONTEST'
 
@@ -82,10 +85,17 @@ export default function FightersPage() {
 
   // Filters
   const [search, setSearch] = useState('')
-  const [filterWeight, setFilterWeight] = useState('')
+  const [filterWeightMin, setFilterWeightMin] = useState('')
+  const [filterWeightMax, setFilterWeightMax] = useState('')
   const [filterCard, setFilterCard] = useState('')
   const [filterEvent, setFilterEvent] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'weight' | 'nextFight'>('name')
+
+  // Inline weight edit (admin/trainer)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null)
+  const [inlineWeight, setInlineWeight] = useState('')
+  const [inlineSaving, setInlineSaving] = useState(false)
 
   // Edit modal
   const [editTarget, setEditTarget] = useState<Fighter | null>(null)
@@ -110,12 +120,36 @@ export default function FightersPage() {
     Promise.all([
       fetch('/api/fighters').then(r => r.json()),
       fetch('/api/events').then(r => r.json()),
-    ]).then(([f, e]) => {
+      fetch('/api/auth/me').then(r => r.json()),
+    ]).then(([f, e, me]) => {
       setFighters(f.data ?? [])
       setEvents(e.data ?? [])
+      setUserRole(me.data?.role ?? null)
       setLoading(false)
     })
   }, [])
+
+  const canEdit = userRole === 'ADMIN' || userRole === 'TRAINER'
+
+  const startInlineEdit = (fighter: Fighter) => {
+    setInlineEditId(fighter.id)
+    setInlineWeight(fighter.currentWeight?.toString() ?? '')
+  }
+
+  const saveInlineWeight = async (fighter: Fighter) => {
+    setInlineSaving(true)
+    const res = await fetch(`/api/fighters/${fighter.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentWeight: inlineWeight }),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      setFighters(prev => prev.map(f => f.id === fighter.id ? { ...f, ...data } : f))
+      setInlineEditId(null)
+    }
+    setInlineSaving(false)
+  }
 
   const openEdit = (fighter: Fighter, tab: 'details' | 'competitions' = 'details') => {
     setEditTarget(fighter)
@@ -234,13 +268,24 @@ export default function FightersPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fighters])
 
+  const weightFilterActive = filterWeightMin !== '' || filterWeightMax !== ''
+
   const filteredFighters = useMemo(() => {
     let list = [...fighters]
     if (search) {
       const q = search.toLowerCase()
       list = list.filter(f => f.name.toLowerCase().includes(q))
     }
-    if (filterWeight) list = list.filter(f => f.weightClass === filterWeight)
+    if (weightFilterActive) {
+      const min = filterWeightMin !== '' ? parseFloat(filterWeightMin) : null
+      const max = filterWeightMax !== '' ? parseFloat(filterWeightMax) : null
+      list = list.filter(f => {
+        if (f.currentWeight === null) return false
+        if (min !== null && f.currentWeight < min) return false
+        if (max !== null && f.currentWeight > max) return false
+        return true
+      })
+    }
     if (filterCard) list = list.filter(f => getCardStatus(f.fighterCardExpiry) === filterCard)
     if (filterEvent) list = list.filter(f => f.competitionEntries.some(e => e.eventId === filterEvent))
 
@@ -255,7 +300,7 @@ export default function FightersPage() {
     }
     return list
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fighters, search, filterWeight, filterCard, filterEvent, sortBy])
+  }, [fighters, search, filterWeightMin, filterWeightMax, filterCard, filterEvent, sortBy])
 
   const upcomingEventsForFilter = useMemo(() => {
     const seen = new Set<string>()
@@ -327,7 +372,7 @@ export default function FightersPage() {
       </section>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap gap-3 mb-3">
         <div className="relative flex-1 min-w-48">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
@@ -338,14 +383,39 @@ export default function FightersPage() {
           />
         </div>
 
-        <select
-          value={filterWeight}
-          onChange={e => setFilterWeight(e.target.value)}
-          className="bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 rounded-lg px-3 py-2 focus:outline-none focus:border-brand"
-        >
-          <option value="">{t('fight_all')} {t('fight_filter_weight')}</option>
-          {WEIGHT_CLASSES.map(w => <option key={w} value={w}>{w}</option>)}
-        </select>
+        {/* Weight range filter */}
+        <div className={`flex items-center gap-2 bg-zinc-900 border rounded-lg px-3 py-2 ${weightFilterActive ? 'border-brand/50' : 'border-zinc-800'}`}>
+          <Weight size={13} className="text-zinc-600 shrink-0" />
+          <input
+            type="number"
+            min={WEIGHT_MIN}
+            max={WEIGHT_MAX}
+            value={filterWeightMin}
+            onChange={e => setFilterWeightMin(e.target.value)}
+            placeholder="Min"
+            className="w-14 bg-transparent text-sm text-white focus:outline-none placeholder-zinc-600"
+          />
+          <span className="text-zinc-600 text-xs">—</span>
+          <input
+            type="number"
+            min={WEIGHT_MIN}
+            max={WEIGHT_MAX}
+            value={filterWeightMax}
+            onChange={e => setFilterWeightMax(e.target.value)}
+            placeholder="Max"
+            className="w-14 bg-transparent text-sm text-white focus:outline-none placeholder-zinc-600"
+          />
+          <span className="text-zinc-500 text-xs">kg</span>
+          {weightFilterActive && (
+            <button
+              onClick={() => { setFilterWeightMin(''); setFilterWeightMax('') }}
+              className="text-zinc-600 hover:text-zinc-300 transition-colors ml-1"
+              aria-label="Clear weight filter"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
 
         <select
           value={filterCard}
@@ -381,6 +451,21 @@ export default function FightersPage() {
         </select>
       </div>
 
+      {/* Active filter status line */}
+      {(weightFilterActive || filterCard || filterEvent) && (
+        <p className="text-xs text-zinc-500 mb-4">
+          Showing {filteredFighters.length} fighter{filteredFighters.length !== 1 ? 's' : ''}
+          {weightFilterActive && (
+            <span className="text-zinc-400">
+              {' '}between{' '}
+              <span className="text-white font-medium">
+                {filterWeightMin || WEIGHT_MIN}kg – {filterWeightMax || WEIGHT_MAX}kg
+              </span>
+            </span>
+          )}
+        </p>
+      )}
+
       {/* Fighters grid */}
       {filteredFighters.length === 0 ? (
         <p className="text-zinc-600 text-sm">{t('fight_no_fighters')}</p>
@@ -400,14 +485,55 @@ export default function FightersPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-semibold truncate">{fighter.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {fighter.weightClass && (
-                        <span className="text-xs text-zinc-500 flex items-center gap-1">
-                          <Weight size={10} /> {fighter.weightClass}
-                          {fighter.currentWeight ? ` · ${fighter.currentWeight}kg` : ''}
-                        </span>
-                      )}
-                    </div>
+
+                    {/* Weight display + inline edit */}
+                    {inlineEditId === fighter.id ? (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <Weight size={11} className="text-zinc-600 shrink-0" />
+                        <input
+                          type="number"
+                          step="0.1"
+                          min={WEIGHT_MIN}
+                          max={WEIGHT_MAX}
+                          value={inlineWeight}
+                          onChange={e => setInlineWeight(e.target.value)}
+                          autoFocus
+                          className="w-16 bg-zinc-800 border border-brand/50 text-white text-xs rounded px-2 py-0.5 focus:outline-none focus:border-brand"
+                        />
+                        <span className="text-zinc-500 text-xs">kg</span>
+                        <button
+                          onClick={() => saveInlineWeight(fighter)}
+                          disabled={inlineSaving}
+                          className="text-[10px] font-medium text-brand hover:text-brand-hover disabled:opacity-50 transition-colors"
+                        >
+                          {inlineSaving ? '…' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => setInlineEditId(null)}
+                          className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 mt-0.5 group">
+                        <Weight size={11} className="text-zinc-600 shrink-0" />
+                        {fighter.currentWeight !== null ? (
+                          <span className="text-sm font-medium text-zinc-300">{fighter.currentWeight}kg</span>
+                        ) : (
+                          <span className="text-xs text-zinc-600">Weight not set</span>
+                        )}
+                        {canEdit && (
+                          <button
+                            onClick={() => startInlineEdit(fighter)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-600 hover:text-zinc-400"
+                            aria-label="Edit weight"
+                          >
+                            <Pencil size={10} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
