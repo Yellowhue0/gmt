@@ -469,6 +469,13 @@ const translations = {
     adm_role_junior: 'Junior',
     adm_junior_badge: 'JUNIOR',
     fin_role_junior: 'Junior',
+
+    // Pending approval page
+    pending_title: 'Väntar på bekräftelse',
+    pending_body: 'Ditt konto inväntar bekräftelse från en administratör eller tränare.',
+    pending_notice1: 'Du får en notis när ditt konto har bekräftats.',
+    pending_notice2: 'Har du frågor? Kontakta gymmet direkt.',
+    pending_logout: 'Logga ut',
   },
   en: {
     // Navbar
@@ -938,6 +945,13 @@ const translations = {
     adm_role_junior: 'Junior',
     adm_junior_badge: 'JUNIOR',
     fin_role_junior: 'Junior',
+
+    // Pending approval page
+    pending_title: 'Waiting for approval',
+    pending_body: 'Your account is awaiting confirmation from an administrator or trainer.',
+    pending_notice1: 'You will receive a notification when your account has been confirmed.',
+    pending_notice2: 'Have questions? Contact the gym directly.',
+    pending_logout: 'Log out',
   },
 } as const
 

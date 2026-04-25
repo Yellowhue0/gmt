@@ -4,12 +4,13 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Clock, LogOut } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function PendingApprovalPage() {
   const router = useRouter()
+  const { t } = useLanguage()
 
   useEffect(() => {
-    // If user is already confirmed (e.g. after re-login), redirect to dashboard
     fetch('/api/auth/me')
       .then(r => r.json())
       .then(d => {
@@ -42,16 +43,16 @@ export default function PendingApprovalPage() {
             className="text-2xl font-bold text-white mb-3"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Väntar på bekräftelse
+            {t('pending_title')}
           </h1>
 
           <p className="text-zinc-400 text-sm leading-relaxed mb-4">
-            Ditt konto inväntar bekräftelse från en administratör eller tränare.
+            {t('pending_body')}
           </p>
 
           <div className="bg-zinc-800/60 rounded-lg px-4 py-3 border border-zinc-700/50 text-zinc-500 text-xs text-left space-y-1">
-            <p>Du får en notis när ditt konto har bekräftats.</p>
-            <p>Har du frågor? Kontakta gymmet direkt.</p>
+            <p>{t('pending_notice1')}</p>
+            <p>{t('pending_notice2')}</p>
           </div>
         </div>
 
@@ -60,7 +61,7 @@ export default function PendingApprovalPage() {
           className="flex items-center gap-2 mx-auto text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
         >
           <LogOut size={14} />
-          Logga ut
+          {t('pending_logout')}
         </button>
       </div>
     </div>
