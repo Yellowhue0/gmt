@@ -9,7 +9,7 @@ type Trainer = { id: string; name: string; role: string }
 type SessionData = {
   id?: string
   name: string
-  description: string
+  description: string | null
   startTime: string
   endTime: string
   maxCapacity: number
